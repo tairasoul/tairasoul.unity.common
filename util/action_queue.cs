@@ -13,7 +13,7 @@ class ActionQueue : MonoBehaviour
 		get 
 		{
 			if (_instance == null) {
-				GameObject obj = new("tairasoul.networking.actionqueue." + Assembly.GetExecutingAssembly().GetName().Name);
+				GameObject obj = new("tairasoul.unity.common.actionqueue." + Assembly.GetExecutingAssembly().GetName().Name);
 				DontDestroyOnLoad(obj);
 				_instance = obj.AddComponent<ActionQueue>();
 			}
