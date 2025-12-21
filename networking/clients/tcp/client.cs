@@ -30,7 +30,6 @@ partial class ClientTcp : IClient
 	}
 
 	public void SendPacket<T>(T packet) where T : IPacket {
-		// Plugin.Log.LogInfo($"Sending packet of type {packet.Type}");
 		ActionQueue.Enqueue(() =>
 		{
 			WritePacketHeader(packet, bitWriter);

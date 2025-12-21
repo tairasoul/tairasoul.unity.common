@@ -87,18 +87,19 @@ class SerdesGen {
 		string s = targetSymbol?.ToDisplayString(format);
 
 		if (s != "tairasoul.unity.common.bits.BitReader" && s != "tairasoul.unity.common.bits.BitWriter" && s != "tairasoul.unity.common.bits.BitWriterAsync" && s != "tairasoul.unity.common.bits.BitReaderAsync")
-      return [];
-    var argExpression = ma.ArgumentList.Arguments[0].Expression;
-    var argTypeInfo = semantic.GetTypeInfo(argExpression);
-    ISymbol? symbol = argTypeInfo.Type;
+			return [];
+		ISymbol? symbol = methodSymbol.TypeArguments[0];
 		if (symbol is null) return [];
 		HashSet<string> encountered = [];
 		List<SerdesType?> extras = [];
-		if (symbol is INamedTypeSymbol named) {
-			if (named.TypeKind == TypeKind.Struct || named.TypeKind == TypeKind.Class) {
-				return [ProcessStruct(named, encountered, extras), ..extras];
+		if (symbol is INamedTypeSymbol named)
+		{
+			if (named.TypeKind == TypeKind.Struct || named.TypeKind == TypeKind.Class)
+			{
+				return [ProcessStruct(named, encountered, extras), .. extras];
 			}
-			else if (named.TypeKind == TypeKind.Enum) {
+			else if (named.TypeKind == TypeKind.Enum)
+			{
 				return [ProcessEnum(named)];
 			}
 		}

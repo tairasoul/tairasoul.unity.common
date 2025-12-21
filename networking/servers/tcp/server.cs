@@ -96,7 +96,7 @@ partial class ServerTcp : IServer {
 		while (true) {
 			if (listener.Pending()) {
 				TcpClient socket = listener.AcceptTcpClient();
-				Task.Run(() =>
+				Task.Run(async () =>
 				{
 					TcpConnection connection = new()
 					{
@@ -109,7 +109,7 @@ partial class ServerTcp : IServer {
 					onConn(connection, currentPlayerIndex);
 					ConnAdded(socket, currentPlayerIndex);
 					currentPlayerIndex += 1;
-					Task.Run(async () => await ProcessPackets((ushort)(currentPlayerIndex - 1), connection), ct);
+					await ProcessPackets((ushort)(currentPlayerIndex - 1), connection);
 				});
 			}
 		}

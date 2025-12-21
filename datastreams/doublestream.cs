@@ -2,7 +2,6 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-
 namespace tairasoul.unity.common.datastreams;
 
 class DoubleStream(Stream read, Stream write) : Stream {
@@ -30,6 +29,7 @@ class DoubleStream(Stream read, Stream write) : Stream {
 	{
 		await WriteAsync(buffer, offset, count, _cts.Token);
 	}
+
 
 	public override void Write(byte[] buffer, int offset, int count)
 		=> WriteAsync(buffer, offset, count, _cts.Token).GetAwaiter().GetResult();

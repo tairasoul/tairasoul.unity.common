@@ -1,4 +1,6 @@
+using System;
 using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace tairasoul.unity.common.sourcegen.bits.util;
 

@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.CodeAnalysis;
+using System.Collections.Generic;
 
 namespace tairasoul.unity.common.sourcegen.bits;
 
@@ -25,7 +26,18 @@ public class BitSerDes : IIncrementalGenerator
 		context.RegisterSourceOutput(collected.Combine(optionsProvider), (ctx, types) =>
 		{
 			try {
-				SerdesGen.GenerateSerDes(ctx, types.Left, types.Right.Contains("BITWRITING_ASYNC_GENERICWRITE"), types.Right.Contains("BITREADING_ASYNC_GENERICREAD"));
+				List<SerdesType> serdesTypes = [];
+				HashSet<string> encountered = [];
+				foreach (SerdesType type in types.Left!) {
+					if (type is SerdesTypeStruct str) {
+						if (encountered.Add(str.qualifiedName))
+							serdesTypes.Add(str);
+					}
+					else {
+						serdesTypes.Add(type!);
+					}
+				}
+				SerdesGen.GenerateSerDes(ctx, serdesTypes, types.Right.Contains("BITWRITING_ASYNC_GENERICWRITE"), types.Right.Contains("BITREADING_ASYNC_GENERICREAD"));
 			}
 			catch (Exception ex)
 			{

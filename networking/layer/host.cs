@@ -10,7 +10,6 @@ using static tairasoul.unity.common.networking.util.ObjectIdUtils;
 using tairasoul.unity.common.networking.interfaces;
 using tairasoul.unity.common.networking.factories;
 using tairasoul.unity.common.networking.attributes.packets;
-//using vapmp.networking.sync;
 
 namespace tairasoul.unity.common.networking.layer;
 
