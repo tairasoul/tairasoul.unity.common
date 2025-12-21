@@ -16,6 +16,5 @@
     <Compile Include="$(MSBuildThisFileDirectory)../networking/factories/interfaces.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)../networking/factories/tcp-udp-hybrid.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)../networking/factories/tcp-only.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)../networking/factories/ice.cs" />
   </ItemGroup>
 </Project>
