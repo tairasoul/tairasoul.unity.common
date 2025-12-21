@@ -12,7 +12,7 @@ using tairasoul.unity.common.util;
 namespace tairasoul.unity.common.bits;
 
 // code from https://github.com/smoogipoo/BinaryBitLib/blob/master/BinaryBitLib/BinaryBitReader.cs
-// modified for MessagePack-like deserialization and for use directly over the network
+// modified for generic deserialization and for use directly over the network
 public class BitReaderAsync : IDisposable
 {
 	public Stream baseStream { get; private set; }

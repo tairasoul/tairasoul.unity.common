@@ -12,7 +12,7 @@ using tairasoul.unity.common.util;
 namespace tairasoul.unity.common.bits;
 
 // code from https://github.com/smoogipoo/BinaryBitLib/blob/master/BinaryBitLib/BinaryBitWriter.cs
-// modified for MessagePack-like serialization and for use directly over the network
+// modified for generic serialization and for use directly over the network
 
 public class BitWriterAsync(Stream stream) : IDisposable 
 {
