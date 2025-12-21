@@ -424,6 +424,7 @@ class SerdesGen {
 		return null;
 	}
 
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	static string GetType(PrimitiveType type) {
 		return type switch
 		{
@@ -442,11 +443,13 @@ class SerdesGen {
 		};
 	}
 
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	static string GetCast(PrimitiveType type) {
 		return $"({GetType(type)})";
 	}
 
-		static string GetPrimitiveDes(PrimitiveType type, string? sizeStr, bool async = true) {
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	static string GetPrimitiveDes(PrimitiveType type, string? sizeStr, bool async = true) {
 		return type switch
 		{
 			PrimitiveType.String => $"{(async ? "await " : "")}%1.ReadString({sizeStr})",
@@ -464,6 +467,7 @@ class SerdesGen {
 		};
 	}
 
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	static string GetPrimitiveSer(PrimitiveType type, string? sizeStr, bool async = false) {
 		switch (type) {
 			case PrimitiveType.String:
@@ -498,7 +502,9 @@ class SerdesGen {
 		}
 	}
 
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	static uint BitLength(uint n) => (uint)(n == 0 ? 1 : 32 - LeadingZeroCount(n));
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	static int LeadingZeroCount(uint n)
 	{
 		if (n == 0) return 32;
@@ -511,6 +517,7 @@ class SerdesGen {
 		return count;
 	}
 
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	static string GetQualifiedName(SerdesType serdes) {
 		return serdes switch
 		{
@@ -555,13 +562,14 @@ class SerdesGen {
 							if (field.isNullable)
 								structLines.Add($"if ({GetPrimitiveDes(PrimitiveType.Bool, null, async)})");
 							structLines.Add("{");
-							structLines.Add($"{Tabs()}{GetQualifiedName(field.type)} {Hash($"{appendExtra}{typeCs}{fieldStr}")};");
+							string fhash = Hash($"{appendExtra}{typeCs}{fieldStr}");
+							structLines.Add($"{Tabs()}{GetQualifiedName(field.type)} {fhash};");
 							foreach (string sfield in fieldDes)
 							{
 								string end = !sfield.EndsWith("{") && !sfield.EndsWith("}") && !sfield.EndsWith(";") ? ";" : "";
-								structLines.Add($"{Tabs()}{sfield.Replace("%2", Hash($"{appendExtra}{typeCs}{fieldStr}"))}{end}");
+								structLines.Add($"{Tabs()}{sfield.Replace("%2", fhash)}{end}");
 							}
-							structLines.Add($"{Tabs()}{Hash($"{appendExtra}{typeCs}Type")}.GetField(\"{field.name}\", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(%2, {Hash($"{appendExtra}{typeCs}{fieldStr}")});");
+							structLines.Add($"{Tabs()}{Hash($"{appendExtra}{typeCs}Type")}.GetField(\"{field.name}\", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(%2, {fhash});");
 						}
 						else
 						{
@@ -585,8 +593,9 @@ class SerdesGen {
 						{
 							if (field.useReflection) continue;
 							string fieldStr = GetValidCSTostring(field.type);
-							structLines.Add($"{GetQualifiedName(field.type)}{(field.isNullable ? "?" : "")} {Hash($"{appendExtra}record{typeCs}{fieldStr}{field.name}")}{(field.isNullable ? " = null" : "")};");
-							positionalFieldVariables.Add(Hash($"{appendExtra}record{typeCs}{fieldStr}{field.name}"));
+							string pfv = Hash($"{appendExtra}record{typeCs}{fieldStr}{field.name}");
+							structLines.Add($"{GetQualifiedName(field.type)}{(field.isNullable ? "?" : "")} {pfv}{(field.isNullable ? " = null" : "")};");
+							positionalFieldVariables.Add(pfv);
 							if (field.isNullable) {
 								structLines.Add($"if ({GetPrimitiveDes(PrimitiveType.Bool, null, async)})");
 							}
@@ -595,7 +604,7 @@ class SerdesGen {
 							foreach (string sfield in fieldDes)
 							{
 								string end = !sfield.EndsWith("{") && !sfield.EndsWith("}") && !sfield.EndsWith(";") ? ";" : "";
-								structLines.Add($"{Tabs()}{sfield.Replace("%2", Hash($"{appendExtra}record{typeCs}{fieldStr}{field.name}"))}{end}");
+								structLines.Add($"{Tabs()}{sfield.Replace("%2", pfv)}{end}");
 							}
 							structLines.Add("}");
 						}
@@ -608,14 +617,15 @@ class SerdesGen {
 								if (field.isNullable)
 									extraLines.Add($"if ({GetPrimitiveDes(PrimitiveType.Bool, null, async)})");
 								extraLines.Add("{");
-								extraLines.Add($"{Tabs()}{GetQualifiedName(field.type)} {Hash($"{appendExtra}record{typeCs}{fieldStr}{field.name}")};");
+								string fvh = Hash($"{appendExtra}record{typeCs}{fieldStr}{field.name}");
+								extraLines.Add($"{Tabs()}{GetQualifiedName(field.type)} {fvh};");
 								IEnumerable<string> fieldDes = GetDes(field.type, typeCs, field.size, async);
 								foreach (string sfield in fieldDes)
 								{
 									string end = !sfield.EndsWith("{") && !sfield.EndsWith("}") && !sfield.EndsWith(";") ? ";" : "";
-									extraLines.Add($"{Tabs()}{sfield.Replace("%2", Hash($"{appendExtra}record{typeCs}{fieldStr}{field.name}"))}{end}");
+									extraLines.Add($"{Tabs()}{sfield.Replace("%2", fvh)}{end}");
 								}
-								extraLines.Add($"{Tabs()}{Hash($"{appendExtra}{typeCs}Type")}.GetField(\"{field.name}\", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(%2, {Hash($"{appendExtra}record{typeCs}{fieldStr}{field.name}")});");
+								extraLines.Add($"{Tabs()}{Hash($"{appendExtra}{typeCs}Type")}.GetField(\"{field.name}\", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(%2, {fvh});");
 							}
 							else {
 								if (field.isNullable)
@@ -660,7 +670,8 @@ class SerdesGen {
 				arrLines.Add($"int {Hash($"{appendExtra}arr{arrTs}length")} = {GetPrimitiveDes(PrimitiveType.Int, typeArray.lengthSize != null ? $"{typeArray.lengthSize}" : "", async)};");
 				arrLines.Add($"{GetQualifiedName(typeArray)} {Hash($"{appendExtra}{arrTs}")} = new {GetQualifiedName(typeArray.elementType)}[{appendExtra}arr{arrTs}length]");
 				string arrElementStr = GetValidCSTostring(typeArray.elementType);
-				arrLines.Add($"for (int {Hash($"{appendExtra}i{arrElementStr}")} = 0; {Hash($"{appendExtra}i{arrElementStr}")} < {Hash($"{appendExtra}arr{arrTs}length")}; {Hash($"{appendExtra}i{arrElementStr}")}++) {{");
+				string taith = Hash($"{appendExtra}i{arrElementStr}");
+				arrLines.Add($"for (int {taith} = 0; {taith} < {Hash($"{appendExtra}arr{arrTs}length")}; {taith}++) {{");
 				IEnumerable<string> eArrDes = GetDes(typeArray.elementType, arrTs, typeArray.valueSize, async);
 				if (typeArray.elementNullable)
 				{
@@ -675,7 +686,7 @@ class SerdesGen {
 				}
 				else {
 					foreach (string line in eArrDes) {
-						arrLines.Add($"{Tabs(typeArray.elementNullable ? 2 : 1)}{line.Replace("%2", $"{Hash($"{appendExtra}{arrTs}")}[{Hash($"{appendExtra}i{arrElementStr}")}]")}");
+						arrLines.Add($"{Tabs(typeArray.elementNullable ? 2 : 1)}{line.Replace("%2", $"{Hash($"{appendExtra}{arrTs}")}[{taith}]")}");
 					}
 				}
 				arrLines.Add("}");
@@ -685,33 +696,36 @@ class SerdesGen {
 				List<string> dictLines = [];
 				string dictTs = GetValidCSTostring(typeDictionary);
 				dictLines.Add($"int {Hash($"{appendExtra}dict{dictTs}length")} = {GetPrimitiveDes(PrimitiveType.Int, typeDictionary.lengthSize != null ? $"{typeDictionary.lengthSize}" : "")}");
-				dictLines.Add($"{GetQualifiedName(typeDictionary)} {Hash($"{appendExtra}{dictTs}")} = []");
+				string dictvar = Hash($"{appendExtra}{dictTs}");
+				dictLines.Add($"{GetQualifiedName(typeDictionary)} {dictvar} = []");
 				string dictKeyStr = GetValidCSTostring(typeDictionary.key);
 				string dictValStr = GetValidCSTostring(typeDictionary.value);
-				dictLines.Add($"for (int {Hash($"{appendExtra}i{dictKeyStr}{dictValStr}")} = 0; {Hash($"{appendExtra}i{dictKeyStr}{dictValStr}")} < {Hash($"{appendExtra}dict{dictTs}length")}; {Hash($"{appendExtra}i{dictKeyStr}{dictValStr}")}++) {{");
+				string dictith = Hash($"{appendExtra}i{dictKeyStr}{dictValStr}");
+				dictLines.Add($"for (int {dictith} = 0; {dictith} < {Hash($"{appendExtra}dict{dictTs}length")}; {dictith}++) {{");
 				IEnumerable<string> keyDes = GetDes(typeDictionary.key, dictTs, typeDictionary.keySize, async);
 				IEnumerable<string> valueDes = GetDes(typeDictionary.value, dictTs, typeDictionary.valueSize, async);
 				foreach (string line in keyDes) {
 					dictLines.Add($"{Tabs()}{line.Replace("%2", $"{GetQualifiedName(typeDictionary.key)} {Hash($"{appendExtra}{dictKeyStr}")}")}");
 				}
+				string dictvalvar = Hash($"{appendExtra}{dictValStr}");
 				if (typeDictionary.valueNullable) {
-					dictLines.Add($"{Tabs()}{GetQualifiedName(typeDictionary.key)}? {Hash($"{appendExtra}{dictValStr}_nullable")} = null;");
+					dictLines.Add($"{Tabs()}{GetQualifiedName(typeDictionary.key)}? {dictvalvar} = null;");
 					dictLines.Add($"{Tabs()}if ({GetPrimitiveDes(PrimitiveType.Bool, null, async)})");
 					dictLines.Add($"{Tabs()}{{");
 					foreach (string line in valueDes) {
-						dictLines.Add($"{Tabs(2)}{line.Replace("%2", Hash($"{appendExtra}{dictValStr}_nullable"))}");
+						dictLines.Add($"{Tabs(2)}{line.Replace("%2", dictvalvar)}");
 					}
 					dictLines.Add($"{Tabs()}}}");
-					dictLines.Add($"{Hash($"{appendExtra}{dictTs}")}[{Hash($"{appendExtra}{dictKeyStr}_nullable")}] = {Hash($"{appendExtra}{dictValStr}_nullable")}");
+					dictLines.Add($"{dictvar}[{Hash($"{appendExtra}{dictKeyStr}")}] = {dictvalvar}");
 				}
 				else {
 					foreach (string line in valueDes) {
-						dictLines.Add($"{Tabs()}{line.Replace("%2", $"{GetQualifiedName(typeDictionary.value)} {Hash($"{appendExtra}{dictValStr}")}")}");
+						dictLines.Add($"{Tabs()}{line.Replace("%2", $"{GetQualifiedName(typeDictionary.value)} {dictvalvar}")}");
 					}
-					dictLines.Add($"{Hash($"{appendExtra}{dictTs}")}[{Hash($"{appendExtra}{dictKeyStr}")}] = {Hash($"{appendExtra}{dictValStr}")}");
+					dictLines.Add($"{dictvar}[{Hash($"{appendExtra}{dictKeyStr}")}] = {dictvalvar}");
 				}
 				dictLines.Add("}");
-				dictLines.Add($"%2 = {Hash($"{appendExtra}{dictTs}")}");
+				dictLines.Add($"%2 = {dictvar}");
 				return dictLines;
 			case SerdesTypeEnum typeEnum:
 				if (typeEnum.autoSize)
@@ -787,7 +801,7 @@ class SerdesGen {
 				{
 					SerdesType var = typeVariant.variants[i];
 					IEnumerable<string> varSer = var is SerdesTypeStructField sf ? GetSer(sf.type, sf.size, async) : GetSer(var, async: async);
-					string underscored = ReplaceInvalidCharacters(GetQualifiedName(var)) + "_variant";
+					string underscored = Hash(ReplaceInvalidCharacters(GetQualifiedName(var)) + "_variant");
 					variantLines.Add($"if (%2 is {GetQualifiedName(var)} {underscored}) {{");
 					variantLines.Add($"{Tabs()}{(async ? "await " : "")}%1.WriteUInt({i}, {tvs});");
 					foreach (string sfield in varSer) {
