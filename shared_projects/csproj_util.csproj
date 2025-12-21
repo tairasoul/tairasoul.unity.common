@@ -1,0 +1,15 @@
+<Project>
+  <Target Name="EmbedDependencies" Condition="$(EmbedDependencyList) == 'true'" AfterTargets="AfterResolveReferences">
+    <ItemGroup>
+      <EmbeddedResource Include="@(ReferenceCopyLocalPaths)"
+        Condition="'$(DependencyEmbeds.Contains(%(Filename)))' == 'true' And '%(Extension)' == '.dll'" />
+    </ItemGroup>
+  </Target>
+  <Target Name="CleanupOutput" Condition="$(CleanupBuildOutput) == 'true'" AfterTargets="Build">
+    <ItemGroup>
+      <FilesToDelete Include="$(OutputPath)*.*" 
+        Exclude="$(OutputPath)$(AssemblyName).dll;$(OutputPath)$(AssemblyName).pdb" />
+    </ItemGroup>
+    <Delete Files="@(FilesToDelete)" />
+  </Target>
+</Project>

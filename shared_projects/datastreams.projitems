@@ -1,0 +1,6 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)../datastreams/localstream.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../datastreams/doublestream.cs" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,21 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)../networking/attributes/packets.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../networking/clients/interface.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../networking/clients/tcp/client.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../networking/clients/udp/client.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../networking/interfaces/packet.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../networking/layer/host.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../networking/layer/interface.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../networking/servers/interface.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../networking/servers/tcp/server.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../networking/servers/udp/server.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../networking/sync/owned.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../networking/sync/player.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../networking/util/objectid.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../networking/factories/interfaces.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../networking/factories/tcp-udp-hybrid.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../networking/factories/tcp-only.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../networking/factories/ice.cs" />
+  </ItemGroup>
+</Project>

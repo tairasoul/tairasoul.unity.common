@@ -1,0 +1,7 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)../util/action_queue.cs" Condition="$(IncludeActionQueue) == 'true'"/>
+    <Compile Include="$(MSBuildThisFileDirectory)../util/casts.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../util/assembly.cs" />
+  </ItemGroup>
+</Project>

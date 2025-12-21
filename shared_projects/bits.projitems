@@ -1,0 +1,9 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)../bits/attributes/bits.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../bits/reading-async.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../bits/reading.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../bits/writing-async.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../bits/writing.cs" />
+  </ItemGroup>
+</Project>
