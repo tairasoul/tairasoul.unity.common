@@ -12,17 +12,18 @@ static class StringUtil {
 		return tb;
 	}
 	
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public unsafe static string Hash(string str) {
-		// t1ha hash
-    uint hash = 0;
-    ReadOnlySpan<byte> bytes = Encoding.UTF8.GetBytes(str);
+		// fnv hash
+		// todo: make t1ha2 hash
+		// (because trying to use a hash library doesnt work??)
+		ulong hash = 14695981039346656037;
+    ReadOnlySpan<byte> bytes = Encoding.Unicode.GetBytes(str);
 
 		fixed (byte* ptr = bytes) {
-			byte* p = ptr;
 			int length = bytes.Length;
 			for (int i = 0; i < length; i++) {
-				hash = (hash * 31) + p[i];
+				hash ^= ptr[i];
+				hash = (hash * 1099511628211);
 			}
 		}
     
