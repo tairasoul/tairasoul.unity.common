@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using tairasoul.unity.common.hashing;
 
 namespace tairasoul.unity.common.events;
 
@@ -43,21 +44,7 @@ static class EventBus {
 	}
 	
 	unsafe static string Hash(string str) {
-		// fnv hash
-		// still need to implement t1ha2 so i dont copy this code everywhere i need a hash function		
-		ulong hash = 14695981039346656037;
-		ReadOnlySpan<byte> bytes = Encoding.Unicode.GetBytes(str);
-
-		fixed (byte* ptr = bytes) {
-			int length = bytes.Length;
-			for (int i = 0; i < length; i++) {
-				hash ^= ptr[i];
-				hash *= 1099511628211;
-			}
-		}
-    
-		string hashString = hash.ToString("x8");
-		return $"hash_{hashString}_";
+		return $"hash_{Murmur3.Hash128(str)}_";
 	}
 
 	public static async Task<H> WaitFor<T, H>(T eventId, Func<H, bool> predicate)

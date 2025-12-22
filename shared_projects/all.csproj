@@ -1,6 +1,7 @@
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildThisFileDirectory)bits.projitems" Label="Shared" />
   <Import Project="$(MSBuildThisFileDirectory)events.projitems" Label="Shared" />
+  <Import Project="$(MSBuildThisFileDirectory)hashing.projitems" Label="Shared" />
   <Import Project="$(MSBuildThisFileDirectory)networking.projitems" Label="Shared" />
   <Import Project="$(MSBuildThisFileDirectory)deploader.projitems" Label="Shared" />
   <Import Project="$(MSBuildThisFileDirectory)datastreams.csproj" Label="Shared" />
