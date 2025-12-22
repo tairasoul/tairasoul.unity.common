@@ -1,6 +1,7 @@
 using System;
 using System.Runtime.CompilerServices;
 using System.Text;
+using tairasoul.unity.common.hashing;
 
 namespace tairasoul.unity.common.sourcegen.networking.util;
 
