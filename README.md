@@ -8,6 +8,8 @@ datastreams : stream-derived classes
 
 embedded : code that interacts with embedded resources
 
+events : code for things like an event bus
+
 hashing : implementations/ports of hashing algorithms
 
 networking : a basic networking layer
