@@ -8,6 +8,8 @@ datastreams : stream-derived classes
 
 embedded : code that interacts with embedded resources
 
+hashing : implementations/ports of hashing algorithms
+
 networking : a basic networking layer
 
 shared_projects : a bunch of .projitems for different common code, .csproj items for ones that also need a dependency and a .csproj with general csproj-related utils
