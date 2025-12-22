@@ -135,8 +135,7 @@ partial class HostBasedP2P : INetworkLayer {
 
 	public ulong IncrementAndGetLocalCounter()
 	{
-		ulong counter = ++localCounter;
-		return CreateID(playerId, counter);
+		return ++localCounter;
 	}
 
 	public void SendPacket<T>(T data, ushort id, PacketReliability reliability) where T : IPacket

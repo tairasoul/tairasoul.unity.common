@@ -6,6 +6,8 @@ using tairasoul.unity.common.networking.sync;
 
 namespace tairasoul.unity.common.networking.components;
 
+abstract record CreationData();
+
 static class ComponentCreatorRegistry {
 	static Dictionary<Type, IComponentCreator> registeredCreators = [];
 
@@ -16,8 +18,12 @@ static class ComponentCreatorRegistry {
 	}
 
 	public static async Task<BaseOwnedSyncComponent> Create<T>() where T : IComponentCreator, new() {
+		return await Create<T>((_) => true);
+	}
+
+	public static async Task<BaseOwnedSyncComponent> Create<T>(Func<CreationData, bool> predicate) where T : IComponentCreator, new() {
 		if (registeredCreators.TryGetValue(typeof(T), out IComponentCreator creator)) {
-			return await creator.RequestCreation();
+			return await creator.RequestCreation(predicate);
 		}
 		return null;
 	}
