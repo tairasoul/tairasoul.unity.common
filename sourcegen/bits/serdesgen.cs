@@ -744,7 +744,7 @@ class SerdesGen {
 			case SerdesTypeQualifiedReference typeReference:
 				string underscored = typeReference.qualifiedName.Replace(".", "_");
 				return [
-					$"%2 = {(async ? "await " : "")}{underscored}SerDes.Deserialize(%1)"
+					$"%2 = {(async ? "await " : "")}{Hash(underscored)}SerDes.Deserialize(%1)"
 				];
 			default:
 				return [];
@@ -763,18 +763,18 @@ class SerdesGen {
 					{
 						string fieldStr = GetValidCSTostring(typeStruct);
 						if (typesAdded.Add(fieldStr))
-							structLines.Add($"Type {fieldStr}Type = typeof({GetQualifiedName(typeStruct)});");
+							structLines.Add($"Type {Hash($"{fieldStr}Type")} = typeof({GetQualifiedName(typeStruct)});");
 						if (field.isNullable)
 						{
 							structLines.Add($"{GetPrimitiveSer(PrimitiveType.Bool, null, async).Replace("%2", $"{fieldStr}Type.GetField(\"{field.name}\", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(%2) != null")};");
-							structLines.Add($"if ({fieldStr}Type.GetField(\"{field.name}\", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(%2) != null)"); ;
+							structLines.Add($"if ({Hash($"{fieldStr}Type")}.GetField(\"{field.name}\", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(%2) != null)"); ;
 						}
 						structLines.Add("{");
 						IEnumerable<string> fieldSer = GetSer(field.type, field.size, async);
 						foreach (string sfield in fieldSer)
 						{
 							string end = !sfield.EndsWith("{") && !sfield.EndsWith("}") && !sfield.EndsWith(";") ? ";" : "";
-							structLines.Add($"{Tabs()}{sfield.Replace("%2", $"({GetQualifiedName(field.type)}){fieldStr}Type.GetField(\"{field.name}\", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(%2)")}{end}");
+							structLines.Add($"{Tabs()}{sfield.Replace("%2", $"({GetQualifiedName(field.type)}){Hash($"{fieldStr}Type")}.GetField(\"{field.name}\", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(%2)")}{end}");
 						}
 					}
 					else
@@ -859,7 +859,7 @@ class SerdesGen {
 				string ser = GetPrimitiveSer(typePrimitive.primitive, sizeStr, async);
 				return [ser];
 			case SerdesTypeQualifiedReference typeReference:
-				return [$"{(async ? "await " : "")}{typeReference.qualifiedName.Replace(".", "_")}SerDes.Serialize(%2, %1)"];
+				return [$"{(async ? "await " : "")}{Hash(typeReference.qualifiedName.Replace(".", "_"))}SerDes.Serialize(%2, %1)"];
 			default:
 				return [];
 		}
@@ -872,7 +872,7 @@ class SerdesGen {
 		{
 			foreach (SerdesTypeStruct struc in structs)
 			{
-				string underscored = struc.qualifiedName.Replace(".", "_");
+				string underscored = Hash(struc.qualifiedName.Replace(".", "_"));
 				StringBuilder sb = new();
 				sb.AppendLine("using System;");
 				sb.AppendLine("using tairasoul.unity.common.bits;");
@@ -907,7 +907,7 @@ class SerdesGen {
 				}
 				sb.AppendLine($"{Tabs()}}}");
 				sb.AppendLine("}");
-				prodContext.AddSource($"serdes/{underscored}.g.cs", sb.ToString());
+				prodContext.AddSource($"serdes/{struc.qualifiedName.Replace(".", "_")}.g.cs", sb.ToString());
 			}
 		}
 		{
@@ -926,7 +926,7 @@ class SerdesGen {
 				sb.AppendLine($"{Tabs()}public static void Serialize(object value, BitWriter writer) {{");
 			foreach (SerdesTypeStruct struc in structs)
 			{
-				string underscored = struc.qualifiedName.Replace(".", "_");
+				string underscored = Hash(struc.qualifiedName.Replace(".", "_"));
 				SerdesTypeQualifiedReference refer = new(struc.qualifiedName);
 				IEnumerable<string> ser = GetSer(refer, async: serializeAsync);
 				sb.AppendLine($"{Tabs(2)}if (value is {struc.qualifiedName} {underscored}) {{");
@@ -940,7 +940,7 @@ class SerdesGen {
 			}
 			foreach (SerdesTypeEnum tenum in enums)
 			{
-				string underscored = tenum.qualifiedName.Replace(".", "_");
+				string underscored = Hash(tenum.qualifiedName.Replace(".", "_"));
 				IEnumerable<string> ser = GetSer(tenum, async: serializeAsync);
 				sb.AppendLine($"{Tabs(2)}if (value is {tenum.qualifiedName} {underscored}) {{");
 				foreach (string serStr in ser)
@@ -958,7 +958,7 @@ class SerdesGen {
 				sb.AppendLine($"{Tabs()}public static object Deserialize(Type type, BitReader reader) {{");
 			foreach (SerdesTypeStruct struc in structs)
 			{
-				string underscored = struc.qualifiedName.Replace(".", "_");
+				string underscored = Hash(struc.qualifiedName.Replace(".", "_"));
 				SerdesTypeQualifiedReference refer = new(struc.qualifiedName);
 				List<string> des = [.. GetDes(refer, async: deserializeAsync)];
 				des[des.Count - 1] = des[des.Count - 1].Replace("%2 =", "return");
