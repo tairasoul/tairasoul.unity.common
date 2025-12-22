@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using tairasoul.unity.common.networking.interfaces;
 using UnityEngine;
 
@@ -10,8 +11,8 @@ abstract class BaseOwnedSyncComponent : MonoBehaviour {
 	public ulong objectId;
 	public abstract void Synchronize();
 	public abstract void Synchronize<T>(T packet) where T : IPacket;
-	protected static Func<BaseOwnedSyncComponent> RequestCreation;
-	public static BaseOwnedSyncComponent RequestCreate() => RequestCreation();
+	protected static Func<Task<BaseOwnedSyncComponent>> RequestCreation;
+	public static async Task<BaseOwnedSyncComponent> RequestCreate() => await RequestCreation();
 	public void Start() {
 		if (!ActiveNetworked.Contains(this))
 			ActiveNetworked.Add(this);
