@@ -30,11 +30,19 @@ static unsafe class Murmur3 {
 		return Hash128(bytes, seed);
 	}
 
+#if MURMUR3_SPANS
 	public static string Hash128(ReadOnlySpan<byte> bytes) {
 		return Hash128(bytes, 104729);
 	}
 
 	public static string Hash128(ReadOnlySpan<byte> bytes, uint seed) {
+#else
+	public static string Hash128(byte[] bytes) {
+		return Hash128(bytes, 104729);
+	}
+
+	public static string Hash128(byte[] bytes, uint seed) {
+#endif
 		int len = bytes.Length;
 		fixed (byte* data = bytes)
 		{
