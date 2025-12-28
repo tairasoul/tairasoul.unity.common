@@ -1,0 +1,26 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/dsl/antlr4-impl/SrDslLexer.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/dsl/antlr4-impl/SrDslParser.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/dsl/antlr4-impl/SrDslParserBaseListener.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/dsl/antlr4-impl/SrDslParserBaseVisitor.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/dsl/antlr4-impl/SrDslParserListener.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/dsl/antlr4-impl/SrDslParserVisitor.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/dsl/compiler/analysis.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/dsl/compiler/compilation.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/dsl/compiler/compiler.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/dsl/compiler/config.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/dsl/compiler/translation.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/dsl/compiler/visitor.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/dsl/event-bus/event_types.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/dsl/event-bus/types.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/dsl/internals/accessor.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/dsl/internals/bounds_binder.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/dsl/internals/operations.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/dsl/internals/typefinder.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/dsl/interfaces.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/livesplit/livesplit.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/runtime/behaviour.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/runtime/runtime.cs" />
+  </ItemGroup>
+</Project>

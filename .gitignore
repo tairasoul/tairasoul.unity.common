@@ -2,3 +2,5 @@ sourcegen/networking/bin/
 sourcegen/networking/obj/
 sourcegen/bits/bin/
 sourcegen/bits/obj/
+speedrunning/dsl/antlr4-impl/
+speedrunning/dsl/grammar/.antlr

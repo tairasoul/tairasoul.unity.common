@@ -5,9 +5,11 @@ using System.Text;
 namespace tairasoul.unity.common.hashing;
 
 // direct port of murmur3 to c#, no attempts at c#-specific optimization yet
-static unsafe class Murmur3 {
+static unsafe class Murmur3
+{
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	static ulong fmix64(ulong k) {
+	static ulong fmix64(ulong k)
+	{
 		k ^= k >> 33;
 		k *= 0xff51afd7ed558ccdUL;
 		k ^= k >> 33;
@@ -16,32 +18,37 @@ static unsafe class Murmur3 {
 		return k;
 	}
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	static ulong rotl64(ulong x, sbyte r) {
+	static ulong rotl64(ulong x, sbyte r)
+	{
 		return (x << r) | (x >> (64 - r));
 	}
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	static ulong getblock64(ulong* p, int i) => p[i];
-	public static string Hash128(string input) {
+	public static string Hash128(string input)
+	{
 		return Hash128(input, 104729);
 	}
 
-	public static string Hash128(string input, uint seed) {
+	public static string Hash128(string input, uint seed)
+	{
 		byte[] bytes = Encoding.UTF8.GetBytes(input);
 		return Hash128(bytes, seed);
 	}
 
 #if MURMUR3_SPANS
-	public static string Hash128(ReadOnlySpan<byte> bytes) {
-		return Hash128(bytes, 104729);
-	}
+		public static string Hash128(ReadOnlySpan<byte> bytes) {
+			return Hash128(bytes, 104729);
+		}
 
-	public static string Hash128(ReadOnlySpan<byte> bytes, uint seed) {
+		public static string Hash128(ReadOnlySpan<byte> bytes, uint seed) {
 #else
-	public static string Hash128(byte[] bytes) {
+	public static string Hash128(byte[] bytes)
+	{
 		return Hash128(bytes, 104729);
 	}
 
-	public static string Hash128(byte[] bytes, uint seed) {
+	public static string Hash128(byte[] bytes, uint seed)
+	{
 #endif
 		int len = bytes.Length;
 		fixed (byte* data = bytes)

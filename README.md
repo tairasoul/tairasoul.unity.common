@@ -18,4 +18,6 @@ shared_projects : a bunch of .projitems for different common code, .csproj items
 
 sourcegen : source generators
 
+speedrunning : DSL specifically for integrating LiveSplit with a unity game
+
 util : general common util
