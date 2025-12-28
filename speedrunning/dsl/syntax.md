@@ -2,6 +2,10 @@
 
 syntax reference for the speedrunning dsl.
 
+keywords of note:
+
+`fulfilled` - tells the compiler that this is where it should consider the split completed
+
 ## File structure
 
 files are structured as follows
