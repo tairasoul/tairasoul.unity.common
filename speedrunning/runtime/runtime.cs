@@ -55,6 +55,7 @@ public static class RuntimeInterface {
 		List<FileEntry> entries = [];
 		foreach (var dir in Directory.GetDirectories(path)) {
 			var et = readDirectory(dir, $"{Path.GetFileName(dir)}/");
+			if (et.Count() == 0) continue;
 			entries.Add(new(true, Path.GetFileName(dir), $"{relative}/{Path.GetFileName(dir)}", et));
 		}
 		foreach (var file in Directory.GetFiles(path)) {
