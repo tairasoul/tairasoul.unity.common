@@ -14,6 +14,7 @@ public static class RuntimeInterface {
 	static InternalDslOperations dslOp;
 	static Compiler compiler = null;
 	static Assembly current;
+	static string? activeFile = null;
 	internal static RuntimeBehaviour behaviour;
 
 	static RuntimeInterface() {
@@ -49,6 +50,10 @@ public static class RuntimeInterface {
 			throw new InvalidOperationException("Cannot get available files before setting up runtime interface.");
 		}
 		return readDirectory(compiler.buildPath);
+	}
+
+	public static string? GetActiveFile() {
+		return activeFile;
 	}
 
 	static IEnumerable<FileEntry> readDirectory(string path, string relative = "") {
@@ -90,6 +95,7 @@ public static class RuntimeInterface {
 		if (DslCompilationConfig.BoundsRegistryClass == null) {
 			throw new InvalidOperationException("Tried to compile or load a split file without setting DslCompilationConfig.BoundsRegistryClass.");
 		}
+		activeFile = file;
 		AccessorUtil.ClearCache();
 		Assembly assembly = compiler.Compile(file);
 		current = assembly;
