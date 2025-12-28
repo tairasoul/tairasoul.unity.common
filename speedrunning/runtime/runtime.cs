@@ -10,7 +10,7 @@ namespace tairasoul.unity.common.speedrunning.runtime;
 public record FileEntry(bool isDirectory, string name, string relativePath, IEnumerable<FileEntry> entries);
 
 public static class RuntimeInterface {
-	static Livesplit livesplitInstance;
+	public static Livesplit livesplitInstance;
 	static InternalDslOperations dslOp;
 	static Compiler compiler = null;
 	static Assembly current;

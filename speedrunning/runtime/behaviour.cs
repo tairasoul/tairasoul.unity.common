@@ -1,4 +1,7 @@
+
+using tairasoul.unity.common.events;
 using tairasoul.unity.common.speedrunning.dsl;
+using tairasoul.unity.common.speedrunning.dsl.eventbus;
 using tairasoul.unity.common.speedrunning.dsl.internals;
 using UnityEngine;
 
@@ -13,6 +16,7 @@ class RuntimeBehaviour : MonoBehaviour {
 		BoundsBinder.CheckUpdates();
 		activeFile.CallCurrentSplit();
 		if (activeFile.IsCompleted()) {
+			EventBus.Send(new DslFileCompleted(), null);
 			IsActive = false;
 		}
 	}

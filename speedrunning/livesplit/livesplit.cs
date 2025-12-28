@@ -3,7 +3,7 @@ using System.Text;
 
 namespace tairasoul.unity.common.speedrunning.livesplit;
 
-class Livesplit {
+public class Livesplit {
 	private PipeStream pipe;
 	public void ConnectPipe() {
 		pipe = new NamedPipeClientStream("Livesplit");
