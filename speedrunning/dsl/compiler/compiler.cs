@@ -11,7 +11,6 @@ namespace tairasoul.unity.common.speedrunning.dsl.compiler;
 class Compiler {
 	internal string buildPath;
 	internal string sourcePath;
-	static string acsHash = null;
 	static string mvHash = null;
 
 	public Compiler(string build, string source, string modVersion) {
@@ -21,13 +20,6 @@ class Compiler {
 			Directory.CreateDirectory(build);
 		if (!Directory.Exists(source))
 			Directory.CreateDirectory(source);
-		if (acsHash == null)
-		{
-			Assembly assemblyCSharp = AppDomain.CurrentDomain.GetAssemblies()
-				.FirstOrDefault(a => a.GetName().Name == "Assembly-CSharp");
-			byte[] acs = File.ReadAllBytes(assemblyCSharp.Location);
-			acsHash = Murmur3.Hash128(acs);
-		}
 		mvHash ??= Murmur3.Hash128(modVersion);
 	}
 
@@ -37,14 +29,14 @@ class Compiler {
 		string filePath = Path.Combine(sourcePath, file);
 		string filehash = Murmur3.Hash128(File.ReadAllText(filePath));
 		string existingHash = File.ReadAllText(hashPath);
-		return (filehash + acsHash + mvHash) != existingHash;
+		return (filehash + mvHash) != existingHash;
 	}
 
 	void WriteHash(string file) {
 		string hashPath = Path.Combine(buildPath, Path.GetFileNameWithoutExtension(file) + ".murmur3");
 		string filePath = Path.Combine(sourcePath, file);
 		string filehash = Murmur3.Hash128(File.ReadAllText(filePath));
-		File.WriteAllText(hashPath, filehash + acsHash + mvHash);
+		File.WriteAllText(hashPath, filehash + mvHash);
 	}
 
 	public Assembly Compile(string file) {
