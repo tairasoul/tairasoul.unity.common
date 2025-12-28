@@ -84,7 +84,7 @@ public static class AccessorUtil {
 						type,
 						true);
 					ILGenerator gen = dm.GetILGenerator();
-					gen.Emit(OpCodes.Ldarg_1);
+					gen.Emit(OpCodes.Ldarg_0);
 					gen.Emit(OpCodes.Castclass, type);
 					gen.Emit(OpCodes.Ldfld, field);
 					gen.Emit(OpCodes.Ret);
@@ -137,7 +137,7 @@ public static class AccessorUtil {
 						type,
 						true);
 					ILGenerator gen = dm.GetILGenerator();
-					gen.Emit(OpCodes.Ldarg_1);
+					gen.Emit(OpCodes.Ldarg_0);
 					gen.Emit(OpCodes.Castclass, type);
 					gen.Emit(OpCodes.Call, property.GetGetMethod(true));
 					if (property.PropertyType.IsValueType)
