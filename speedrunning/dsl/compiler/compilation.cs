@@ -24,6 +24,7 @@ class CompilationVisitor : IVisitor {
 	static MethodInfo EventBusStop = EventBusType.GetMethod("StopListening", BindingFlags.Public | BindingFlags.Static);
 	static MethodInfo DslOperationsTimerCall = InternalDslOperationsType.GetMethod("Timer");
 	static MethodInfo BoundsSetMinMax = typeof(Bounds).GetMethod("SetMinMax");
+	static MethodInfo BoundsOpInequality = typeof(Bounds).GetMethod("op_Inequality", [typeof(Bounds), typeof(Bounds)]);
 	static MethodInfo BoundCreated = typeof(IBoundsRegistry).GetMethod("BoundCreated");
 	static MethodInfo BoundDestroyed = typeof(IBoundsRegistry).GetMethod("BoundDestroyed");
 	static MethodInfo BoundsBindPartial = typeof(BoundsBinder).GetMethod("BindPartial");
@@ -65,23 +66,21 @@ class CompilationVisitor : IVisitor {
 		fg.Emit(OpCodes.Ret);
 		MethodBuilder ccs = currentClass.DefineMethod("CallCurrentSplit", MethodAttributes.Public, typeof(void), []);
 		ILGenerator cgen = ccs.GetILGenerator();
+		Label endOf = cgen.DefineLabel();
 		Label[] switchLabels = new Label[conditionOrder.Count()];
 		for (int i = 0; i < conditionOrder.Count(); i++)
 			switchLabels[i] = cgen.DefineLabel();
 		cgen.Emit(OpCodes.Ldarg_0);
 		cgen.Emit(OpCodes.Ldfld, splitIndexField);
 		cgen.Emit(OpCodes.Switch, switchLabels);
-		cgen.Emit(OpCodes.Ret);
+		cgen.Emit(OpCodes.Br, endOf);
 		for (int i = 0; i < conditionOrder.Count(); i++) {
 			cgen.MarkLabel(switchLabels[i]);
 			cgen.Emit(OpCodes.Ldarg_0);
 			MethodBuilder method = currentClass.DefineMethod(conditionOrder.ElementAt(i) + "condition", MethodAttributes.Public, CallingConventions.HasThis, typeof(bool), []);
 			methods[conditionOrder.ElementAt(i)] = method;
-			Label doTrue = cgen.DefineLabel();
 			cgen.Emit(OpCodes.Call, method);
-			cgen.Emit(OpCodes.Brtrue_S, doTrue);
-			cgen.Emit(OpCodes.Ret);
-			cgen.MarkLabel(doTrue);
+			cgen.Emit(OpCodes.Brfalse, endOf);
 			cgen.Emit(OpCodes.Ldarg_0);
 			EmitInt(cgen, i + 1);
 			cgen.Emit(OpCodes.Stfld, splitIndexField);
@@ -89,8 +88,11 @@ class CompilationVisitor : IVisitor {
 			cgen.Emit(OpCodes.Ldstr, conditionOrder.ElementAt(i));
 			cgen.Emit(OpCodes.Newobj, SplitCompletedData.GetConstructor([typeof(string)]));
 			cgen.Emit(OpCodes.Call, EventBusSend.MakeGenericMethod(SplitCompleted));
-			cgen.Emit(OpCodes.Ret);
+			if (i != conditionOrder.Count() - 1)
+				cgen.Emit(OpCodes.Br, endOf);
 		}
+		cgen.MarkLabel(endOf);
+		cgen.Emit(OpCodes.Ret);
 		constructor = currentClass.DefineConstructor(MethodAttributes.Public, CallingConventions.HasThis, [InternalDslOperationsType, typeof(IBoundsRegistry)]);
 		ILGenerator gen = constructor.GetILGenerator();
 		gen.Emit(OpCodes.Ldarg_0);
@@ -142,12 +144,7 @@ class CompilationVisitor : IVisitor {
 		}
 		else if (split.content is TranslationFullConditionNode fc) {
 			Visit(fc);
-			foreach (var method in activeInactiveBounds) {
-				currentGenerator.Emit(OpCodes.Ldarg_0);
-				currentGenerator.Emit(OpCodes.Call, method);
-			}
 			currentGenerator.Emit(OpCodes.Ret);
-			activeInactiveBounds.Clear();
 		}
 		else if (split.content is TranslationRunImmediate ri) {
 			Visit(ri);
@@ -604,9 +601,8 @@ class CompilationVisitor : IVisitor {
 			Label label = gen.DefineLabel();
 			gen.Emit(OpCodes.Ldarg_0);
 			gen.Emit(OpCodes.Ldfld, boundField);
-			gen.Emit(OpCodes.Ceq);
-			gen.Emit(OpCodes.Ldc_I4_0);
-			gen.Emit(OpCodes.Beq, label);
+			gen.Emit(OpCodes.Call, BoundsOpInequality);
+			gen.Emit(OpCodes.Brtrue_S, label);
 			gen.Emit(OpCodes.Ldarg_0);
 			gen.Emit(OpCodes.Ldc_I4_1);
 			gen.Emit(OpCodes.Stfld, everVisited);
@@ -684,6 +680,11 @@ class CompilationVisitor : IVisitor {
 			sl.Emit(OpCodes.Newobj, BoundLeft.GetConstructors().First());
 			sl.Emit(OpCodes.Ldstr, $"bound_{b}leavelistener");
 			sl.Emit(OpCodes.Call, EventBusStop.MakeGenericMethod(BoundLeft));
+			sl.Emit(OpCodes.Ldarg_0);
+			sl.Emit(OpCodes.Ldfld, boundRegistryField);
+			sl.Emit(OpCodes.Ldarg_0);
+			sl.Emit(OpCodes.Ldfld, boundField);
+			sl.Emit(OpCodes.Callvirt, BoundDestroyed);
 			sl.Emit(OpCodes.Ret);
 			elist.Emit(OpCodes.Ldarg_1);
 			ConvertIL(elist, BoundEnteredData);
@@ -691,9 +692,8 @@ class CompilationVisitor : IVisitor {
 			Label elabel = elist.DefineLabel();
 			elist.Emit(OpCodes.Ldarg_0);
 			elist.Emit(OpCodes.Ldfld, boundField);
-			elist.Emit(OpCodes.Ceq);
-			elist.Emit(OpCodes.Ldc_I4_0);
-			elist.Emit(OpCodes.Beq, elabel);
+			elist.Emit(OpCodes.Call, BoundsOpInequality);
+			elist.Emit(OpCodes.Brtrue_S, elabel);
 			elist.Emit(OpCodes.Ldarg_0);
 			elist.Emit(OpCodes.Ldc_I4_1);
 			elist.Emit(OpCodes.Stfld, isActive);
@@ -705,9 +705,8 @@ class CompilationVisitor : IVisitor {
 			Label llabel = llist.DefineLabel();
 			llist.Emit(OpCodes.Ldarg_0);
 			llist.Emit(OpCodes.Ldfld, boundField);
-			llist.Emit(OpCodes.Ceq);
-			llist.Emit(OpCodes.Ldc_I4_0);
-			llist.Emit(OpCodes.Beq, llabel);
+			llist.Emit(OpCodes.Call, BoundsOpInequality);
+			llist.Emit(OpCodes.Brtrue_S, llabel);
 			llist.Emit(OpCodes.Ldarg_0);
 			llist.Emit(OpCodes.Ldc_I4_0);
 			llist.Emit(OpCodes.Stfld, isActive);
@@ -793,9 +792,8 @@ class CompilationVisitor : IVisitor {
 			Label label = gen.DefineLabel();
 			gen.Emit(OpCodes.Ldarg_0);
 			gen.Emit(OpCodes.Ldfld, boundField);
-			gen.Emit(OpCodes.Ceq);
-			gen.Emit(OpCodes.Ldc_I4_0);
-			gen.Emit(OpCodes.Beq, label);
+			gen.Emit(OpCodes.Call, BoundsOpInequality);
+			gen.Emit(OpCodes.Brtrue_S, label);
 			gen.Emit(OpCodes.Ldarg_0);
 			gen.Emit(OpCodes.Ldc_I4_1);
 			gen.Emit(OpCodes.Stfld, everVisited);
@@ -873,6 +871,11 @@ class CompilationVisitor : IVisitor {
 			sl.Emit(OpCodes.Ldarg_0);
 			sl.Emit(OpCodes.Ldfld, boundField);
 			sl.Emit(OpCodes.Call, BoundsUnbind);
+			sl.Emit(OpCodes.Ldarg_0);
+			sl.Emit(OpCodes.Ldfld, boundRegistryField);
+			sl.Emit(OpCodes.Ldarg_0);
+			sl.Emit(OpCodes.Ldfld, boundField);
+			sl.Emit(OpCodes.Callvirt, BoundDestroyed);
 			sl.Emit(OpCodes.Ret);
 			elist.Emit(OpCodes.Ldarg_1);
 			ConvertIL(elist, BoundEnteredData);
@@ -880,9 +883,8 @@ class CompilationVisitor : IVisitor {
 			Label elabel = elist.DefineLabel();
 			elist.Emit(OpCodes.Ldarg_0);
 			elist.Emit(OpCodes.Ldfld, boundField);
-			elist.Emit(OpCodes.Ceq);
-			elist.Emit(OpCodes.Ldc_I4_0);
-			elist.Emit(OpCodes.Beq, elabel);
+			elist.Emit(OpCodes.Call, BoundsOpInequality);
+			elist.Emit(OpCodes.Brtrue_S, elabel);
 			elist.Emit(OpCodes.Ldarg_0);
 			elist.Emit(OpCodes.Ldc_I4_1);
 			elist.Emit(OpCodes.Stfld, isActive);
@@ -894,9 +896,8 @@ class CompilationVisitor : IVisitor {
 			Label llabel = llist.DefineLabel();
 			llist.Emit(OpCodes.Ldarg_0);
 			llist.Emit(OpCodes.Ldfld, boundField);
-			llist.Emit(OpCodes.Ceq);
-			llist.Emit(OpCodes.Ldc_I4_0);
-			llist.Emit(OpCodes.Beq, llabel);
+			llist.Emit(OpCodes.Call, BoundsOpInequality);
+			llist.Emit(OpCodes.Brtrue_S, llabel);
 			llist.Emit(OpCodes.Ldarg_0);
 			llist.Emit(OpCodes.Ldc_I4_0);
 			llist.Emit(OpCodes.Stfld, isActive);
@@ -964,9 +965,8 @@ class CompilationVisitor : IVisitor {
 			Label label = gen.DefineLabel();
 			gen.Emit(OpCodes.Ldarg_0);
 			gen.Emit(OpCodes.Ldfld, boundField);
-			gen.Emit(OpCodes.Ceq);
-			gen.Emit(OpCodes.Ldc_I4_0);
-			gen.Emit(OpCodes.Beq, label);
+			gen.Emit(OpCodes.Call, BoundsOpInequality);
+			gen.Emit(OpCodes.Brtrue_S, label);
 			gen.Emit(OpCodes.Ldarg_0);
 			gen.Emit(OpCodes.Ldc_I4_1);
 			gen.Emit(OpCodes.Stfld, everVisited);
@@ -1048,6 +1048,11 @@ class CompilationVisitor : IVisitor {
 			sl.Emit(OpCodes.Ldarg_0);
 			sl.Emit(OpCodes.Ldfld, boundField);
 			sl.Emit(OpCodes.Call, BoundsUnbind);
+			sl.Emit(OpCodes.Ldarg_0);
+			sl.Emit(OpCodes.Ldfld, boundRegistryField);
+			sl.Emit(OpCodes.Ldarg_0);
+			sl.Emit(OpCodes.Ldfld, boundField);
+			sl.Emit(OpCodes.Callvirt, BoundDestroyed);
 			sl.Emit(OpCodes.Ret);
 			elist.Emit(OpCodes.Ldarg_1);
 			ConvertIL(elist, BoundEnteredData);
@@ -1055,9 +1060,8 @@ class CompilationVisitor : IVisitor {
 			Label elabel = elist.DefineLabel();
 			elist.Emit(OpCodes.Ldarg_0);
 			elist.Emit(OpCodes.Ldfld, boundField);
-			elist.Emit(OpCodes.Ceq);
-			elist.Emit(OpCodes.Ldc_I4_0);
-			elist.Emit(OpCodes.Beq, elabel);
+			elist.Emit(OpCodes.Call, BoundsOpInequality);
+			elist.Emit(OpCodes.Brtrue_S, elabel);
 			elist.Emit(OpCodes.Ldarg_0);
 			elist.Emit(OpCodes.Ldc_I4_1);
 			elist.Emit(OpCodes.Stfld, isActive);
@@ -1069,9 +1073,8 @@ class CompilationVisitor : IVisitor {
 			Label llabel = llist.DefineLabel();
 			llist.Emit(OpCodes.Ldarg_0);
 			llist.Emit(OpCodes.Ldfld, boundField);
-			llist.Emit(OpCodes.Ceq);
-			llist.Emit(OpCodes.Ldc_I4_0);
-			llist.Emit(OpCodes.Beq, llabel);
+			llist.Emit(OpCodes.Call, BoundsOpInequality);
+			llist.Emit(OpCodes.Brtrue_S, llabel);
 			llist.Emit(OpCodes.Ldarg_0);
 			llist.Emit(OpCodes.Ldc_I4_0);
 			llist.Emit(OpCodes.Stfld, isActive);
@@ -1244,15 +1247,57 @@ class CompilationVisitor : IVisitor {
 		switch (fullCond.condition) {
 			case TranslationBoundsGrouped tbg:
 				Visit(tbg);
+				Label dontStopListening = currentGenerator.DefineLabel();
+				currentGenerator.Emit(OpCodes.Dup);
+				currentGenerator.Emit(OpCodes.Brfalse, dontStopListening);
+				foreach (var method in activeInactiveBounds)
+				{
+					currentGenerator.Emit(OpCodes.Ldarg_0);
+					currentGenerator.Emit(OpCodes.Call, method);
+				}
+				foreach (var logic in fullCond.body) {
+					if (logic is TranslationFulfilled) continue;
+					VisitLogicNode(logic);
+				}
+				currentGenerator.MarkLabel(dontStopListening);
+				activeInactiveBounds.Clear();
 				break;
 			case TranslationEventListenGrouped elg:
 				Visit(elg);
 				break;
 			case TranslationBoundsObjectGrouped bog:
 				Visit(bog);
+				Label dontStopListening2 = currentGenerator.DefineLabel();
+				currentGenerator.Emit(OpCodes.Dup);
+				currentGenerator.Emit(OpCodes.Brfalse, dontStopListening2);
+				foreach (var method in activeInactiveBounds)
+				{
+					currentGenerator.Emit(OpCodes.Ldarg_0);
+					currentGenerator.Emit(OpCodes.Call, method);
+				}
+				foreach (var logic in fullCond.body) {
+					if (logic is TranslationFulfilled) continue;
+					VisitLogicNode(logic);
+				}
+				currentGenerator.MarkLabel(dontStopListening2);
+				activeInactiveBounds.Clear();
 				break;
 			case TranslationBoundsObjectSizeGrouped bosg:
 				Visit(bosg);
+				Label dontStopListening3 = currentGenerator.DefineLabel();
+				currentGenerator.Emit(OpCodes.Dup);
+				currentGenerator.Emit(OpCodes.Brfalse, dontStopListening3);
+				foreach (var method in activeInactiveBounds)
+				{
+					currentGenerator.Emit(OpCodes.Ldarg_0);
+					currentGenerator.Emit(OpCodes.Call, method);
+				}
+				foreach (var logic in fullCond.body) {
+					if (logic is TranslationFulfilled) continue;
+					VisitLogicNode(logic);
+				}
+				currentGenerator.MarkLabel(dontStopListening3);
+				activeInactiveBounds.Clear();
 				break;
 			case TranslationObjectCondition oc:
 				Visit(oc, fullCond.body);
@@ -1296,10 +1341,10 @@ class CompilationVisitor : IVisitor {
 		Label isNull = currentGenerator.DefineLabel();
 		currentGenerator.Emit(OpCodes.Ldstr, RemovePathDelimiters(objectCond.path));
 		currentGenerator.Emit(OpCodes.Call, AccessorUtilFindGameObject);
-		currentGenerator.Emit(OpCodes.Dup);
+		StoreLocal(currentGenerator, goLocal);
+		LoadLocal(currentGenerator, goLocal);
 		currentGenerator.Emit(OpCodes.Ldnull);
 		currentGenerator.Emit(OpCodes.Beq, isNull);
-		StoreLocal(currentGenerator, goLocal);
 		foreach (var arg in objectCond.args) {
 			Type? argType = EmitAccessor(currentGenerator, typeof(GameObject), goLocal.LocalIndex, arg.propertyAccess);
 			if (argType == null) continue;
@@ -1317,18 +1362,21 @@ class CompilationVisitor : IVisitor {
 		locals.Clear();
 		Type type = Typefinder.FindType(objectCond.component);
 		if (type == null) return;
+		LocalBuilder goLocal = currentGenerator.DeclareLocal(typeof(GameObject));
 		LocalBuilder compLocal = currentGenerator.DeclareLocal(type);
 		Label isNull = currentGenerator.DefineLabel();
 		currentGenerator.Emit(OpCodes.Ldstr, RemovePathDelimiters(objectCond.path));
 		currentGenerator.Emit(OpCodes.Call, AccessorUtilFindGameObject);
-		currentGenerator.Emit(OpCodes.Dup);
+		StoreLocal(currentGenerator, goLocal);
+		LoadLocal(currentGenerator, goLocal);
 		currentGenerator.Emit(OpCodes.Ldnull);
 		currentGenerator.Emit(OpCodes.Beq, isNull);
+		LoadLocal(currentGenerator, goLocal);
 		currentGenerator.Emit(OpCodes.Call, GetComponent.MakeGenericMethod(type));
-		currentGenerator.Emit(OpCodes.Dup);
+		StoreLocal(currentGenerator, compLocal);
+		LoadLocal(currentGenerator, compLocal);
 		currentGenerator.Emit(OpCodes.Ldnull);
 		currentGenerator.Emit(OpCodes.Beq, isNull);
-		StoreLocal(currentGenerator, compLocal);
 		foreach (var arg in objectCond.args) {
 			Type? argType = EmitAccessor(currentGenerator, type, compLocal.LocalIndex, arg.propertyAccess);
 			if (argType == null) continue;

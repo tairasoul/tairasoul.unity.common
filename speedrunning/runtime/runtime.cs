@@ -122,6 +122,7 @@ public static class RuntimeInterface {
 	/// </summary>
 	public static void Reset() {
 		if (behaviour.activeFile == null) return;
+		behaviour.IsActive = false;
 		behaviour.activeFile.Reset();
 		livesplitInstance.Reset();
 	}

@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Text;
 using MainMenuSettings.Extensions;
+using speedrunningutils;
 using UnityEngine;
 
 namespace tairasoul.unity.common.speedrunning.dsl.internals;
@@ -28,6 +29,8 @@ public static class AccessorUtil {
 		var buffer = new StringBuilder();
 		bool escaped = false;
 
+		List<string> res = [];
+
 		foreach (char c in text)
 		{
 			if (c == escape && !escaped)
@@ -36,7 +39,7 @@ public static class AccessorUtil {
 			}
 			else if (c == separator && !escaped)
 			{
-				yield return buffer.ToString();
+				res.Add(buffer.ToString());
 				buffer.Clear();
 			}
 			else
@@ -45,7 +48,8 @@ public static class AccessorUtil {
 				escaped = false;
 			}
 		}
-		yield return buffer.ToString();
+		res.Add(buffer.ToString());
+		return res;
 	}
 
 	public static GameObject? FindGameObject(string path) {
@@ -56,8 +60,9 @@ public static class AccessorUtil {
 		if (current == null) return null;
 		for (int i = 1; i < split.Count(); i++)
 		{
-			current = current.Find(split.ElementAt(i));
-			if (current == null) return null;
+			GameObject found = current.Find(split.ElementAt(i));
+			if (found == null) return null;
+			current = found;
 		}
 		GameObjectCache[path] = current;
 		return current;
@@ -81,12 +86,14 @@ public static class AccessorUtil {
 				else {
 					DynamicMethod dm = new(
 						"",
-						typeof(T),
-						[type],
+						typeof(object),
+						[typeof(object)],
 						type,
 						true);
 					ILGenerator gen = dm.GetILGenerator();
 					gen.Emit(OpCodes.Ldsfld, field);
+					if (field.FieldType.IsValueType)
+						gen.Emit(OpCodes.Box, field.FieldType);
 					gen.Emit(OpCodes.Ret);
 					Func<object> access = (Func<object>)dm.CreateDelegate(typeof(Func<object>));
 					CachedAccessors[key] = (_) => access();
@@ -106,14 +113,16 @@ public static class AccessorUtil {
 				else {
 					DynamicMethod dm = new(
 						"",
-						typeof(T),
-						[type],
+						typeof(object),
+						[typeof(object)],
 						type,
 						true);
 					ILGenerator gen = dm.GetILGenerator();
 					gen.Emit(OpCodes.Ldarg_0);
 					gen.Emit(OpCodes.Castclass, type);
 					gen.Emit(OpCodes.Ldfld, field);
+					if (field.FieldType.IsValueType)
+						gen.Emit(OpCodes.Box, field.FieldType);
 					gen.Emit(OpCodes.Ret);
 					Func<object, object> access = (Func<object, object>)dm.CreateDelegate(typeof(Func<object, object>));
 					CachedAccessors[key] = access;
@@ -134,12 +143,14 @@ public static class AccessorUtil {
 				else {
 					DynamicMethod dm = new(
 						"",
-						typeof(T),
-						[type],
+						typeof(object),
+						[typeof(object)],
 						type,
 						true);
 					ILGenerator gen = dm.GetILGenerator();
 					gen.Emit(OpCodes.Call, property.GetGetMethod(true));
+					if (property.PropertyType.IsValueType)
+						gen.Emit(OpCodes.Box, property.PropertyType);
 					gen.Emit(OpCodes.Ret);
 					Func<object> access = (Func<object>)dm.CreateDelegate(typeof(Func<object>));
 					CachedAccessors[key] = (_) => access();
@@ -159,8 +170,8 @@ public static class AccessorUtil {
 				else {
 					DynamicMethod dm = new(
 						"",
-						typeof(T),
-						[type],
+						typeof(object),
+						[typeof(object)],
 						type,
 						true);
 					ILGenerator gen = dm.GetILGenerator();
@@ -168,7 +179,7 @@ public static class AccessorUtil {
 					gen.Emit(OpCodes.Castclass, type);
 					gen.Emit(OpCodes.Call, property.GetGetMethod(true));
 					if (property.PropertyType.IsValueType)
-							gen.Emit(OpCodes.Box, property.PropertyType);
+						gen.Emit(OpCodes.Box, property.PropertyType);
 					gen.Emit(OpCodes.Ret);
 					Func<object, object> access = (Func<object, object>)dm.CreateDelegate(typeof(Func<object, object>));
 					CachedAccessors[key] = access;
