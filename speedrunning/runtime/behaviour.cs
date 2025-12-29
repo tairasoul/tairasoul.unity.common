@@ -16,6 +16,7 @@ class RuntimeBehaviour : MonoBehaviour {
 		BoundsBinder.CheckUpdates();
 		activeFile.CallCurrentSplit();
 		if (activeFile.IsCompleted()) {
+			activeFile.Reset();
 			EventBus.Send(new DslFileCompleted(), null);
 			IsActive = false;
 		}

@@ -52,6 +52,10 @@ public static class RuntimeInterface {
 		return readDirectory(compiler.sourcePath);
 	}
 
+
+	/// <summary>
+	/// Gets the relative path of the currently active file.
+	/// </summary>
 	public static string? GetActiveFile() {
 		return activeFile;
 	}
