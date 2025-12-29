@@ -23,7 +23,7 @@ public static class AccessorUtil {
 		GameObjectCache.Clear();
 	}
 
-	static IEnumerable<string> SplitUnescaped(this string text, char separator, char escape = '\\')
+	static IEnumerable<string> SplitUnescaped(string text, char separator, char escape = '\\')
 	{
 		var buffer = new StringBuilder();
 		bool escaped = false;
@@ -63,7 +63,8 @@ public static class AccessorUtil {
 		return current;
 	}
 
-	public static T Get<T>(Type type, object instance, string fieldName) {
+	public static T Get<T>(object instance, string fieldName) {
+		Type type = instance.GetType();
 		AccessorCacheKey key = new(type, fieldName);
 		if (CachedAccessors.TryGetValue(key, out var accessor)) {
 			return (T)accessor(instance);
