@@ -646,7 +646,7 @@ class CompilationVisitor : IVisitor {
 			currentGenerator.Emit(OpCodes.Ldc_R4, Math.Max(grouped.start.y, grouped.end.y));
 			currentGenerator.Emit(OpCodes.Ldc_R4, Math.Max(grouped.start.z, grouped.end.z));
 			currentGenerator.Emit(OpCodes.Newobj, typeof(Vector3).GetConstructor([typeof(float), typeof(float), typeof(float)]));
-			currentGenerator.Emit(OpCodes.Callvirt, BoundsSetMinMax);
+			currentGenerator.Emit(OpCodes.Call, BoundsSetMinMax);
 			currentGenerator.Emit(OpCodes.Ldarg_0);
 			currentGenerator.Emit(OpCodes.Ldfld, boundRegistryField);
 			currentGenerator.Emit(OpCodes.Ldarg_0);
@@ -737,8 +737,7 @@ class CompilationVisitor : IVisitor {
 			currentGenerator.Emit(OpCodes.Ldc_R4, Math.Max(grouped.start.y, grouped.end.y));
 			currentGenerator.Emit(OpCodes.Ldc_R4, Math.Max(grouped.start.z, grouped.end.z));
 			currentGenerator.Emit(OpCodes.Newobj, typeof(Vector3).GetConstructor([typeof(float), typeof(float), typeof(float)]));
-			currentGenerator.Emit(OpCodes.Constrained, typeof(Bounds));
-			currentGenerator.Emit(OpCodes.Callvirt, BoundsSetMinMax);
+			currentGenerator.Emit(OpCodes.Call, BoundsSetMinMax);
 			currentGenerator.Emit(OpCodes.Ldarg_0);
 			currentGenerator.Emit(OpCodes.Ldfld, boundRegistryField);
 			currentGenerator.Emit(OpCodes.Ldarg_0);

@@ -8,8 +8,11 @@ public class LivesplitTCP : ITimer {
   private TcpClient _client;
 	internal int port = 16834;
 	public void Connect() {
-		_client = new();
-		_client.Connect("localhost", port);
+		try
+		{
+			_client = new();
+			_client.Connect("localhost", port);
+		} catch (Exception) {}
 	}
 
 	public void Disconnect() {
