@@ -49,7 +49,7 @@ public static class RuntimeInterface {
 		if (compiler == null) {
 			throw new InvalidOperationException("Cannot get available files before setting up runtime interface.");
 		}
-		return readDirectory(compiler.buildPath);
+		return readDirectory(compiler.sourcePath);
 	}
 
 	public static string? GetActiveFile() {
@@ -61,11 +61,11 @@ public static class RuntimeInterface {
 		foreach (var dir in Directory.GetDirectories(path)) {
 			var et = readDirectory(dir, $"{Path.GetFileName(dir)}/");
 			if (et.Count() == 0) continue;
-			entries.Add(new(true, Path.GetFileName(dir), $"{relative}/{Path.GetFileName(dir)}", et));
+			entries.Add(new(true, Path.GetFileName(dir), $"{relative}{Path.GetFileName(dir)}", et));
 		}
 		foreach (var file in Directory.GetFiles(path)) {
 			if (!file.EndsWith(".srd")) continue;
-			entries.Add(new(false, Path.GetFileName(file), $"{relative}/{Path.GetFileName(file)}", []));
+			entries.Add(new(false, Path.GetFileName(file), $"{relative}{Path.GetFileName(file)}", []));
 		}
 		return entries;
 	}
@@ -100,7 +100,8 @@ public static class RuntimeInterface {
 		Assembly assembly = compiler.Compile(file);
 		current = assembly;
 		Type sfType = assembly.GetType("SplitFile");
-		behaviour.activeFile = (dsl.ISplitFile?)Activator.CreateInstance(sfType, dslOp, DslCompilationConfig.BoundsRegistryClass);
+		object sfInst = Activator.CreateInstance(sfType, dslOp, DslCompilationConfig.BoundsRegistryClass);;
+		behaviour.activeFile = new(sfInst);
 	}
 
 	/// <summary>

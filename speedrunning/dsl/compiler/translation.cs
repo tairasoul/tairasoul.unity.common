@@ -170,8 +170,8 @@ class TranslationVisitor : AbstractParseTreeVisitor<TranslationResult>, ISrDslPa
 		TranslationLiteral x2 = (TranslationLiteral)VisitNumber(ctx._numbers[3]);
 		TranslationLiteral y2 = (TranslationLiteral)VisitNumber(ctx._numbers[4]);
 		TranslationLiteral z2 = (TranslationLiteral)VisitNumber(ctx._numbers[5]);
-		Coordinate start = new((int)x1.value, (int)y1.value, (int)z1.value);
-		Coordinate end = new((int)x2.value, (int)y2.value, (int)z2.value);
+		Coordinate start = new(Convert.ToSingle(x1.value), Convert.ToSingle(y1.value), Convert.ToSingle(z1.value));
+		Coordinate end = new(Convert.ToSingle(x2.value), Convert.ToSingle(y2.value), Convert.ToSingle(z2.value));
 		return new TranslationBoundsGrouped(start, end, bound);
 	}
 
@@ -212,7 +212,7 @@ class TranslationVisitor : AbstractParseTreeVisitor<TranslationResult>, ISrDslPa
 		TranslationLiteral x = (TranslationLiteral)VisitNumber(ctx._numbers[0]);
 		TranslationLiteral y = (TranslationLiteral)VisitNumber(ctx._numbers[1]);
 		TranslationLiteral z = (TranslationLiteral)VisitNumber(ctx._numbers[2]);
-		return new TranslationBoundsObjectSizeGrouped(ctx.path.Text, new Coordinate((int)x.value, (int)y.value, (int)z.value), bound);
+		return new TranslationBoundsObjectSizeGrouped(ctx.path.Text, new Coordinate(Convert.ToSingle(x.value), Convert.ToSingle(y.value), Convert.ToSingle(z.value)), bound);
 	}
 
 	public TranslationResult VisitCall_arg([NotNull] SrDslParser.Call_argContext context)
@@ -573,14 +573,18 @@ class TranslationVisitor : AbstractParseTreeVisitor<TranslationResult>, ISrDslPa
 		var any = context.any_node();
 		var all = context.all_node();
 		var nongrouped = context.nongrouped_condition_node();
+		var immediate = context.runimmediate_node();
 		if (any != null) {
 			return new TranslationSplit(splitName, VisitAny_node(any));
 		}
 		else if (all != null) {
 			return new TranslationSplit(splitName, VisitAll_node(all));
 		}
-		else {
+		else if (nongrouped != null) {
 			return new TranslationSplit(splitName, VisitNongrouped_condition_node(nongrouped));
+		}
+		else {
+			return new TranslationSplit(splitName, VisitRunimmediate_node(immediate));
 		}
 	}
 

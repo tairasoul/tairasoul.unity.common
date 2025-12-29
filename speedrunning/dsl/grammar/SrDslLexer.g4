@@ -112,7 +112,7 @@ DOT_ACCESSED
 	;
 
 PATH
-	: '/' IDENTIFIER ('/' IDENTIFIER)*
+	: '\\' .+? '\\'
 	;
 
 NOTEQUAL

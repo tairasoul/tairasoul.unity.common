@@ -9,7 +9,7 @@ namespace tairasoul.unity.common.speedrunning.runtime;
 
 class RuntimeBehaviour : MonoBehaviour {
 	internal bool IsActive = false;
-	internal ISplitFile? activeFile;
+	internal SplitFileProxy? activeFile;
 
 	void Update() {
 		if (!IsActive || activeFile == null) return;

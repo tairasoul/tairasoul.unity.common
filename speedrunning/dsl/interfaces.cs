@@ -2,11 +2,6 @@ using UnityEngine;
 
 namespace tairasoul.unity.common.speedrunning.dsl;
 
-public interface ISplitFile {
-	public bool IsCompleted();
-	public void CallCurrentSplit();
-}
-
 public interface IBoundsRegistry {
 	/// <summary>
 	/// The method called when a bound becomes active.

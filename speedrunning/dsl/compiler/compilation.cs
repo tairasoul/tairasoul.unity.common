@@ -9,7 +9,6 @@ using UnityEngine;
 namespace tairasoul.unity.common.speedrunning.dsl.compiler;
 
 class CompilationVisitor : IVisitor {
-	static Type SplitFileType = typeof(ISplitFile);
 	static Type InternalDslOperationsType = typeof(InternalDslOperations);
 	static Type EventBusType = typeof(EventBus);
 	static Type DslIdType = typeof(DslId);
@@ -33,9 +32,8 @@ class CompilationVisitor : IVisitor {
 	static MethodInfo DslDataArgs = DslDataType.GetProperty("args").GetGetMethod();
 	static MethodInfo AccessorUtilGet = typeof(AccessorUtil).GetMethod("Get", BindingFlags.Public | BindingFlags.Static);
 	static MethodInfo AccessorUtilFindGameObject = typeof(AccessorUtil).GetMethod("FindGameObject", BindingFlags.Public | BindingFlags.Static);
-	static MethodInfo GetComponent = typeof(GameObject).GetMethod("GetComponent");
+	static MethodInfo GetComponent = typeof(GameObject).GetMethods().FirstOrDefault(m => m.Name == "GetComponent" && m.GetParameters().Length == 0 && m.GetGenericArguments().Length == 1);
 
-	ModuleBuilder module;
 	TypeBuilder currentClass;
 	MethodBuilder currentMethod;
 	ILGenerator currentGenerator;
@@ -43,35 +41,36 @@ class CompilationVisitor : IVisitor {
 	ILGenerator previousGenerator;
 	FieldBuilder dslOperationsField;
 	FieldBuilder boundRegistryField;
+	FieldBuilder splitIndexField;
 	Dictionary<string, MethodBuilder> methods = [];
 	Dictionary<string, LocalBuilder> locals = [];
 	List<MethodBuilder> activeInactiveBounds = [];
 	List<FieldBuilder> falseInits = [];
+	List<FieldBuilder> boundResets = [];
 	int events = 0;
 	int bounds = 0;
 	ConstructorBuilder constructor;
 
 	public CompilationVisitor(ModuleBuilder module, IEnumerable<string> conditionOrder) {
-		this.module = module;
-		currentClass = module.DefineType("SplitFile", TypeAttributes.Class, typeof(System.Object), [SplitFileType]);
+		currentClass = module.DefineType("SplitFile", TypeAttributes.Class | TypeAttributes.Public);
 		dslOperationsField = currentClass.DefineField("dslOperations", InternalDslOperationsType, FieldAttributes.Private);
 		boundRegistryField = currentClass.DefineField("boundRegistry", typeof(IBoundsRegistry), FieldAttributes.Private);
-		FieldBuilder currentSplitIndex = currentClass.DefineField("splitIndex", typeof(int), FieldAttributes.Private);
+		splitIndexField = currentClass.DefineField("splitIndex", typeof(int), FieldAttributes.Private);
 		MethodBuilder fulfilled = currentClass.DefineMethod("IsCompleted", MethodAttributes.Public, CallingConventions.HasThis, typeof(bool), []);
 		ILGenerator fg = fulfilled.GetILGenerator();
 		fg.Emit(OpCodes.Ldarg_0);
-		fg.Emit(OpCodes.Ldfld, currentSplitIndex);
+		fg.Emit(OpCodes.Ldfld, splitIndexField);
 		fg.Emit(OpCodes.Ldc_I4, conditionOrder.Count());
 		fg.Emit(OpCodes.Ceq);
 		fg.Emit(OpCodes.Ret);
-		MethodBuilder ccs = currentClass.DefineMethod("CallCurrentSplit", MethodAttributes.Public);
+		MethodBuilder ccs = currentClass.DefineMethod("CallCurrentSplit", MethodAttributes.Public, typeof(void), []);
 		ILGenerator cgen = ccs.GetILGenerator();
 		Label endOf = cgen.DefineLabel();
 		Label[] switchLabels = new Label[conditionOrder.Count()];
 		for (int i = 0; i < conditionOrder.Count(); i++)
 			switchLabels[i] = cgen.DefineLabel();
 		cgen.Emit(OpCodes.Ldarg_0);
-		cgen.Emit(OpCodes.Ldfld, currentSplitIndex);
+		cgen.Emit(OpCodes.Ldfld, splitIndexField);
 		cgen.Emit(OpCodes.Switch, switchLabels);
 		cgen.Emit(OpCodes.Br, endOf);
 		for (int i = 0; i < conditionOrder.Count(); i++) {
@@ -83,10 +82,10 @@ class CompilationVisitor : IVisitor {
 			cgen.Emit(OpCodes.Brfalse, endOf);
 			cgen.Emit(OpCodes.Ldarg_0);
 			cgen.Emit(OpCodes.Ldarg_0);
-			cgen.Emit(OpCodes.Ldfld, currentSplitIndex);
+			cgen.Emit(OpCodes.Ldfld, splitIndexField);
 			cgen.Emit(OpCodes.Ldc_I4_1);
 			cgen.Emit(OpCodes.Add);
-			cgen.Emit(OpCodes.Stfld, currentSplitIndex);
+			cgen.Emit(OpCodes.Stfld, splitIndexField);
 			cgen.Emit(OpCodes.Newobj, SplitCompleted.GetConstructors().First());
 			cgen.Emit(OpCodes.Ldstr, conditionOrder.ElementAt(i));
 			cgen.Emit(OpCodes.Newobj, SplitCompletedData.GetConstructor([typeof(string)]));
@@ -114,6 +113,25 @@ class CompilationVisitor : IVisitor {
 			gen.Emit(OpCodes.Stfld, fieldInit);
 		}
 		gen.Emit(OpCodes.Ret);
+		MethodBuilder reset = currentClass.DefineMethod("Reset", MethodAttributes.Public, CallingConventions.HasThis, typeof(void), []);
+		ILGenerator rg = reset.GetILGenerator();
+		rg.Emit(OpCodes.Ldarg_0);
+		rg.Emit(OpCodes.Ldc_I4_0);
+		rg.Emit(OpCodes.Stfld, splitIndexField);
+		foreach (var fieldInit in falseInits) {
+			rg.Emit(OpCodes.Ldarg_0);
+			rg.Emit(OpCodes.Ldc_I4_0);
+			rg.Emit(OpCodes.Stfld, fieldInit);
+		}
+		LocalBuilder boundLocal = rg.DeclareLocal(typeof(Bounds));
+		foreach (var bound in boundResets) {
+			LoadLocalA(rg, boundLocal);
+			rg.Emit(OpCodes.Initobj, typeof(Bounds));
+			rg.Emit(OpCodes.Ldarg_0);
+			LoadLocal(rg, boundLocal);
+			rg.Emit(OpCodes.Stfld, bound);
+		}
+		rg.Emit(OpCodes.Ret);
 		currentClass.CreateType();
 	}
 
@@ -132,6 +150,7 @@ class CompilationVisitor : IVisitor {
 				currentGenerator.Emit(OpCodes.Ldarg_0);
 				currentGenerator.Emit(OpCodes.Call, method);
 			}
+			currentGenerator.Emit(OpCodes.Ret);
 			activeInactiveBounds.Clear();
 		}
 		else if (split.content is TranslationRunImmediate ri) {
@@ -161,6 +180,7 @@ class CompilationVisitor : IVisitor {
 			var condition = any.conditions.ElementAt(i);
 			if (condition is TranslationFullConditionNode fc)
 				Visit(fc);
+			currentGenerator.Emit(OpCodes.Ret);
 		}
 		currentMethod = previousMethod;
 		currentGenerator = previousGenerator;
@@ -284,6 +304,25 @@ class CompilationVisitor : IVisitor {
 					gen.Emit(OpCodes.Stloc, idx);
 				break;
 		}
+	}
+
+	void LoadLocalA(ILGenerator gen, LocalBuilder localIdx) {
+		LoadLocalA(gen, localIdx.LocalIndex);
+	}
+
+	void LoadLocal(ILGenerator gen, LocalBuilder localIdx) {
+		LoadLocal(gen, localIdx.LocalIndex);
+	}
+
+	void StoreLocal(ILGenerator gen, LocalBuilder idx) {
+		StoreLocal(gen, idx.LocalIndex);
+	}
+
+	void LoadLocalA(ILGenerator gen, int localIdx) {
+		if (localIdx >= -128 && localIdx <= 127)
+			gen.Emit(OpCodes.Ldloca_S, (sbyte)localIdx);
+		else
+			gen.Emit(OpCodes.Ldloca, localIdx);
 	}
 
 	void LoadLocal(ILGenerator gen, int localIdx) {
@@ -534,6 +573,11 @@ class CompilationVisitor : IVisitor {
 			currentGenerator.Emit(OpCodes.Ldc_R4, (float)literal.value);
 		else if (literal.value.GetType() == typeof(string))
 			currentGenerator.Emit(OpCodes.Ldstr, (string)literal.value);
+		else if (literal.value.GetType() == typeof(bool))
+			if ((bool)literal.value)
+				currentGenerator.Emit(OpCodes.Ldc_I4_1);
+			else
+				currentGenerator.Emit(OpCodes.Ldc_I4_0);
 	}
 
 	public void Visit(TranslationMethodCall method) {
@@ -552,6 +596,7 @@ class CompilationVisitor : IVisitor {
 	public void Visit(TranslationBoundsGrouped grouped) {
 		int b = bounds++;
 		FieldBuilder boundField = currentClass.DefineField($"bound{b}_instance", typeof(Bounds), FieldAttributes.Private);
+		boundResets.Add(boundField);
 		if (grouped.grouped is GroupedBoundType.Once or GroupedBoundType.Never) {
 			FieldBuilder everVisited = currentClass.DefineField($"boundEverVisited_{b}", typeof(bool), FieldAttributes.Private);
 			falseInits.Add(everVisited);
@@ -589,7 +634,10 @@ class CompilationVisitor : IVisitor {
 			currentGenerator.Emit(OpCodes.Ldc_I4_1);
 			currentGenerator.Emit(OpCodes.Stfld, listenStarted);
 			currentGenerator.Emit(OpCodes.Ldarg_0);
-			currentGenerator.Emit(OpCodes.Newobj, typeof(Bounds).GetConstructor([]));
+			LocalBuilder boundLocal = currentGenerator.DeclareLocal(typeof(Bounds));
+			LoadLocalA(currentGenerator, boundLocal);
+			currentGenerator.Emit(OpCodes.Initobj, typeof(Bounds));
+			LoadLocal(currentGenerator, boundLocal);
 			currentGenerator.Emit(OpCodes.Stfld, boundField);
 			currentGenerator.Emit(OpCodes.Ldarg_0);
 			currentGenerator.Emit(OpCodes.Ldfld, boundField);
@@ -621,7 +669,6 @@ class CompilationVisitor : IVisitor {
 				currentGenerator.Emit(OpCodes.Ldc_I4_0);
 				currentGenerator.Emit(OpCodes.Ceq);
 			}
-			currentGenerator.Emit(OpCodes.Ret);
 		}
 		else {
 			FieldBuilder isActive = currentClass.DefineField($"bound_{b}active", typeof(bool), FieldAttributes.Private);
@@ -678,7 +725,10 @@ class CompilationVisitor : IVisitor {
 			currentGenerator.Emit(OpCodes.Ldc_I4_1);
 			currentGenerator.Emit(OpCodes.Stfld, listening);
 			currentGenerator.Emit(OpCodes.Ldarg_0);
-			currentGenerator.Emit(OpCodes.Newobj, typeof(Bounds).GetConstructor([]));
+			LocalBuilder boundLocal = currentGenerator.DeclareLocal(typeof(Bounds));
+			LoadLocalA(currentGenerator, boundLocal);
+			currentGenerator.Emit(OpCodes.Initobj, typeof(Bounds));
+			LoadLocal(currentGenerator, boundLocal);
 			currentGenerator.Emit(OpCodes.Stfld, boundField);
 			currentGenerator.Emit(OpCodes.Ldarg_0);
 			currentGenerator.Emit(OpCodes.Ldfld, boundField);
@@ -717,13 +767,25 @@ class CompilationVisitor : IVisitor {
 				currentGenerator.Emit(OpCodes.Ldc_I4_0);
 				currentGenerator.Emit(OpCodes.Ceq);
 			}
-			currentGenerator.Emit(OpCodes.Ret);
 		}
+	}
+
+	string RemovePathDelimiters(string path) {
+		string result = path;
+		char target = '\\';
+		int first = path.IndexOf(target);
+		if (first >= 0)
+			result = result.Remove(first, 1);
+		int last = path.LastIndexOf(target);
+		if (last >= 0 && last != first)
+			result = result.Remove(last - (first < last ? 1 : 0), 1);
+		return result;
 	}
 
 	public void Visit(TranslationBoundsObjectGrouped grouped) {
 		int b = bounds++;
 		FieldBuilder boundField = currentClass.DefineField($"bound{b}_instance", typeof(Bounds), FieldAttributes.Private);
+		boundResets.Add(boundField);
 		if (grouped.grouped is GroupedBoundType.Once or GroupedBoundType.Never) {
 			FieldBuilder everVisited = currentClass.DefineField($"boundEverVisited_{b}", typeof(bool), FieldAttributes.Private);
 			falseInits.Add(everVisited);
@@ -764,11 +826,14 @@ class CompilationVisitor : IVisitor {
 			currentGenerator.Emit(OpCodes.Ldc_I4_1);
 			currentGenerator.Emit(OpCodes.Stfld, listenStarted);
 			currentGenerator.Emit(OpCodes.Ldarg_0);
-			currentGenerator.Emit(OpCodes.Newobj, typeof(Bounds).GetConstructor([]));
+			LocalBuilder boundLocal = currentGenerator.DeclareLocal(typeof(Bounds));
+			LoadLocalA(currentGenerator, boundLocal);
+			currentGenerator.Emit(OpCodes.Initobj, typeof(Bounds));
+			LoadLocal(currentGenerator, boundLocal);
 			currentGenerator.Emit(OpCodes.Stfld, boundField);
 			currentGenerator.Emit(OpCodes.Ldarg_0);
 			currentGenerator.Emit(OpCodes.Ldfld, boundField);
-			currentGenerator.Emit(OpCodes.Ldstr, grouped.objectPath);
+			currentGenerator.Emit(OpCodes.Ldstr, RemovePathDelimiters(grouped.objectPath));
 			currentGenerator.Emit(OpCodes.Call, AccessorUtilFindGameObject);
 			currentGenerator.Emit(OpCodes.Call, BoundsBindFull);
 			currentGenerator.Emit(OpCodes.Ldarg_0);
@@ -790,7 +855,6 @@ class CompilationVisitor : IVisitor {
 				currentGenerator.Emit(OpCodes.Ldc_I4_0);
 				currentGenerator.Emit(OpCodes.Ceq);
 			}
-			currentGenerator.Emit(OpCodes.Ret);
 		}
 		else {
 			FieldBuilder isActive = currentClass.DefineField($"bound_{b}active", typeof(bool), FieldAttributes.Private);
@@ -850,11 +914,14 @@ class CompilationVisitor : IVisitor {
 			currentGenerator.Emit(OpCodes.Ldc_I4_1);
 			currentGenerator.Emit(OpCodes.Stfld, listening);
 			currentGenerator.Emit(OpCodes.Ldarg_0);
-			currentGenerator.Emit(OpCodes.Newobj, typeof(Bounds).GetConstructor([]));
+			LocalBuilder boundLocal = currentGenerator.DeclareLocal(typeof(Bounds));
+			LoadLocalA(currentGenerator, boundLocal);
+			currentGenerator.Emit(OpCodes.Initobj, typeof(Bounds));
+			LoadLocal(currentGenerator, boundLocal);
 			currentGenerator.Emit(OpCodes.Stfld, boundField);
 			currentGenerator.Emit(OpCodes.Ldarg_0);
 			currentGenerator.Emit(OpCodes.Ldfld, boundField);
-			currentGenerator.Emit(OpCodes.Ldstr, grouped.objectPath);
+			currentGenerator.Emit(OpCodes.Ldstr, RemovePathDelimiters(grouped.objectPath));
 			currentGenerator.Emit(OpCodes.Call, AccessorUtilFindGameObject);
 			currentGenerator.Emit(OpCodes.Call, BoundsBindFull);
 			currentGenerator.Emit(OpCodes.Ldarg_0);
@@ -883,13 +950,13 @@ class CompilationVisitor : IVisitor {
 				currentGenerator.Emit(OpCodes.Ldc_I4_0);
 				currentGenerator.Emit(OpCodes.Ceq);
 			}
-			currentGenerator.Emit(OpCodes.Ret);
 		}
 	}
 
 	public void Visit(TranslationBoundsObjectSizeGrouped grouped) {
 		int b = bounds++;
 		FieldBuilder boundField = currentClass.DefineField($"bound{b}_instance", typeof(Bounds), FieldAttributes.Private);
+		boundResets.Add(boundField);
 		if (grouped.grouped is GroupedBoundType.Once or GroupedBoundType.Never) {
 			FieldBuilder everVisited = currentClass.DefineField($"boundEverVisited_{b}", typeof(bool), FieldAttributes.Private);
 			falseInits.Add(everVisited);
@@ -930,11 +997,14 @@ class CompilationVisitor : IVisitor {
 			currentGenerator.Emit(OpCodes.Ldc_I4_1);
 			currentGenerator.Emit(OpCodes.Stfld, listenStarted);
 			currentGenerator.Emit(OpCodes.Ldarg_0);
-			currentGenerator.Emit(OpCodes.Newobj, typeof(Bounds).GetConstructor([]));
+			LocalBuilder boundLocal = currentGenerator.DeclareLocal(typeof(Bounds));
+			LoadLocalA(currentGenerator, boundLocal);
+			currentGenerator.Emit(OpCodes.Initobj, typeof(Bounds));
+			LoadLocal(currentGenerator, boundLocal);
 			currentGenerator.Emit(OpCodes.Stfld, boundField);
 			currentGenerator.Emit(OpCodes.Ldarg_0);
 			currentGenerator.Emit(OpCodes.Ldfld, boundField);
-			currentGenerator.Emit(OpCodes.Ldstr, grouped.objectPath);
+			currentGenerator.Emit(OpCodes.Ldstr, RemovePathDelimiters(grouped.objectPath));
 			currentGenerator.Emit(OpCodes.Call, AccessorUtilFindGameObject);
 			currentGenerator.Emit(OpCodes.Ldc_R4, grouped.size.x);
 			currentGenerator.Emit(OpCodes.Ldc_R4, grouped.size.y);
@@ -960,7 +1030,6 @@ class CompilationVisitor : IVisitor {
 				currentGenerator.Emit(OpCodes.Ldc_I4_0);
 				currentGenerator.Emit(OpCodes.Ceq);
 			}
-			currentGenerator.Emit(OpCodes.Ret);
 		}
 		else {
 			FieldBuilder isActive = currentClass.DefineField($"bound_{b}active", typeof(bool), FieldAttributes.Private);
@@ -1020,11 +1089,14 @@ class CompilationVisitor : IVisitor {
 			currentGenerator.Emit(OpCodes.Ldc_I4_1);
 			currentGenerator.Emit(OpCodes.Stfld, listening);
 			currentGenerator.Emit(OpCodes.Ldarg_0);
-			currentGenerator.Emit(OpCodes.Newobj, typeof(Bounds).GetConstructor([]));
+			LocalBuilder boundLocal = currentGenerator.DeclareLocal(typeof(Bounds));
+			LoadLocalA(currentGenerator, boundLocal);
+			currentGenerator.Emit(OpCodes.Initobj, typeof(Bounds));
+			LoadLocal(currentGenerator, boundLocal);
 			currentGenerator.Emit(OpCodes.Stfld, boundField);
 			currentGenerator.Emit(OpCodes.Ldarg_0);
 			currentGenerator.Emit(OpCodes.Ldfld, boundField);
-			currentGenerator.Emit(OpCodes.Ldstr, grouped.objectPath);
+			currentGenerator.Emit(OpCodes.Ldstr, RemovePathDelimiters(grouped.objectPath));
 			currentGenerator.Emit(OpCodes.Call, AccessorUtilFindGameObject);
 			currentGenerator.Emit(OpCodes.Ldc_R4, grouped.size.x);
 			currentGenerator.Emit(OpCodes.Ldc_R4, grouped.size.y);
@@ -1057,7 +1129,6 @@ class CompilationVisitor : IVisitor {
 				currentGenerator.Emit(OpCodes.Ldc_I4_0);
 				currentGenerator.Emit(OpCodes.Ceq);
 			}
-			currentGenerator.Emit(OpCodes.Ret);
 		}
 	}
 
@@ -1091,15 +1162,15 @@ class CompilationVisitor : IVisitor {
 		gen.Emit(OpCodes.Ldarg_0);
 		gen.Emit(OpCodes.Castclass, DslDataType);
 		gen.Emit(OpCodes.Callvirt, DslDataArgs);
-		StoreLocal(gen, evdLoc.LocalIndex);
+		StoreLocal(gen, evdLoc);
 		Type[] evTypes = EventTypeRegistry.GetRegistered(eventListen.ev);
 		for (int i = 0; i < eventListen.args.Count(); i++) {
 			var e = eventListen.args.ElementAt(i);
 			locals[e.name] = gen.DeclareLocal(evTypes[i]);
-			LoadLocal(gen, evdLoc.LocalIndex);
+			LoadLocal(gen, evdLoc);
 			gen.Emit(OpCodes.Ldelem_Ref, i);
 			ConvertIL(gen, evTypes[i]);
-			StoreLocal(gen, locals[e.name].LocalIndex);
+			StoreLocal(gen, locals[e.name]);
 		}
 		ILGenerator _b = currentGenerator;
 		currentGenerator = gen;
@@ -1129,7 +1200,6 @@ class CompilationVisitor : IVisitor {
 		currentGenerator.MarkLabel(l);
 		currentGenerator.Emit(OpCodes.Ldarg_0);
 		currentGenerator.Emit(OpCodes.Ldfld, fulfilled);
-		currentGenerator.Emit(OpCodes.Ret);
 	}
 
 	public void Visit(TranslationEventListenGrouped grouped) {
@@ -1148,7 +1218,6 @@ class CompilationVisitor : IVisitor {
 		currentGenerator.Emit(OpCodes.Stfld, fulfilled);
 		MethodBuilder listenMethod = currentClass.DefineMethod($"event_listen{ev}", MethodAttributes.Private, typeof(void), [typeof(EventData)]);
 		ILGenerator gen = listenMethod.GetILGenerator();
-		LocalBuilder evdLoc = gen.DeclareLocal(typeof(object[]));
 		gen.Emit(OpCodes.Ldarg_0);
 		gen.Emit(OpCodes.Ldc_I4_1);
 		gen.Emit(OpCodes.Stfld, fulfilled);
@@ -1168,7 +1237,6 @@ class CompilationVisitor : IVisitor {
 		currentGenerator.MarkLabel(l);
 		currentGenerator.Emit(OpCodes.Ldarg_0);
 		currentGenerator.Emit(OpCodes.Ldfld, fulfilled);
-		currentGenerator.Emit(OpCodes.Ret);
 	}
 
 	public void Visit(TranslationFulfilled ct) {
@@ -1208,8 +1276,8 @@ class CompilationVisitor : IVisitor {
 		Type? memberType = null;
 		foreach (var access in accesses)
 		{
-			var member = prevType.GetMember(access).Where((v) => v is not MethodInfo).First();
-			if (member == null) return null;
+			var member = prevType.GetMember(access, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance).Where((v) => v is not MethodInfo).FirstOrDefault();
+			if (member == null || member == default) return null;
 			if (member is FieldInfo field)
 			{
 				memberType = field.FieldType;
@@ -1223,7 +1291,7 @@ class CompilationVisitor : IVisitor {
 			gen.Emit(OpCodes.Call, typeof(Type).GetMethod("GetTypeFromHandle"));
 			LoadLocal(gen, idx);
 			gen.Emit(OpCodes.Ldstr, access);
-			gen.Emit(OpCodes.Call, AccessorUtilGet);
+			gen.Emit(OpCodes.Call, AccessorUtilGet.MakeGenericMethod(memberType));
 		}
 		return memberType;
 	}
@@ -1233,14 +1301,14 @@ class CompilationVisitor : IVisitor {
 		LocalBuilder goLocal = currentGenerator.DeclareLocal(typeof(GameObject));
 		Label alreadyExists = currentGenerator.DefineLabel();
 		Label isNull = currentGenerator.DefineLabel();
-		LoadLocal(currentGenerator, goLocal.LocalIndex);
+		LoadLocal(currentGenerator, goLocal);
 		currentGenerator.Emit(OpCodes.Ldnull);
 		currentGenerator.Emit(OpCodes.Ceq);
 		currentGenerator.Emit(OpCodes.Brtrue_S, alreadyExists);
-		currentGenerator.Emit(OpCodes.Ldstr, objectCond.path);
+		currentGenerator.Emit(OpCodes.Ldstr, RemovePathDelimiters(objectCond.path));
 		currentGenerator.Emit(OpCodes.Call, AccessorUtilFindGameObject);
-		StoreLocal(currentGenerator, goLocal.LocalIndex);
-		LoadLocal(currentGenerator, goLocal.LocalIndex);
+		StoreLocal(currentGenerator, goLocal);
+		LoadLocal(currentGenerator, goLocal);
 		currentGenerator.Emit(OpCodes.Ldnull);
 		currentGenerator.Emit(OpCodes.Beq, isNull);
 		currentGenerator.MarkLabel(alreadyExists);
@@ -1249,13 +1317,12 @@ class CompilationVisitor : IVisitor {
 			if (argType == null) continue;
 			var local = currentGenerator.DeclareLocal(argType);
 			locals[arg.name] = local;
-			StoreLocal(currentGenerator, local.LocalIndex);
+			StoreLocal(currentGenerator, local);
 		}
 		foreach (var node in body)
 			VisitLogicNode(node);
 		currentGenerator.MarkLabel(isNull);
 		currentGenerator.Emit(OpCodes.Ldc_I4_0);
-		currentGenerator.Emit(OpCodes.Ret);
 	}
 
 	public void Visit(TranslationObjectComponentCondition objectCond, IEnumerable<TranslationResult> body) {
@@ -1267,26 +1334,26 @@ class CompilationVisitor : IVisitor {
 		Label goExists = currentGenerator.DefineLabel();
 		Label compExists = currentGenerator.DefineLabel();
 		Label isNull = currentGenerator.DefineLabel();
-		LoadLocal(currentGenerator, goLocal.LocalIndex);
+		LoadLocal(currentGenerator, goLocal);
 		currentGenerator.Emit(OpCodes.Ldnull);
 		currentGenerator.Emit(OpCodes.Ceq);
 		currentGenerator.Emit(OpCodes.Brtrue_S, goExists);
-		currentGenerator.Emit(OpCodes.Ldstr, objectCond.path);
+		currentGenerator.Emit(OpCodes.Ldstr, RemovePathDelimiters(objectCond.path));
 		currentGenerator.Emit(OpCodes.Call, AccessorUtilFindGameObject);
-		StoreLocal(currentGenerator, goLocal.LocalIndex);
-		LoadLocal(currentGenerator, goLocal.LocalIndex);
+		StoreLocal(currentGenerator, goLocal);
+		LoadLocal(currentGenerator, goLocal);
 		currentGenerator.Emit(OpCodes.Ldnull);
 		currentGenerator.Emit(OpCodes.Beq, isNull);
 		currentGenerator.MarkLabel(goExists);
-		LoadLocal(currentGenerator, compLocal.LocalIndex);
+		LoadLocal(currentGenerator, compLocal);
 		currentGenerator.Emit(OpCodes.Ldnull);
 		currentGenerator.Emit(OpCodes.Ceq);
 		currentGenerator.Emit(OpCodes.Brtrue_S, compExists);
 		currentGenerator.Emit(OpCodes.Ldtoken, type);
 		currentGenerator.Emit(OpCodes.Call, typeof(Type).GetMethod("GetTypeFromHandle"));
 		currentGenerator.Emit(OpCodes.Call, GetComponent.MakeGenericMethod(type));
-		StoreLocal(currentGenerator, compLocal.LocalIndex);
-		LoadLocal(currentGenerator, compLocal.LocalIndex);
+		StoreLocal(currentGenerator, compLocal);
+		LoadLocal(currentGenerator, compLocal);
 		currentGenerator.Emit(OpCodes.Ldnull);
 		currentGenerator.Emit(OpCodes.Beq, isNull);
 		currentGenerator.MarkLabel(compExists);
@@ -1295,19 +1362,18 @@ class CompilationVisitor : IVisitor {
 			if (argType == null) continue;
 			var local = currentGenerator.DeclareLocal(argType);
 			locals[arg.name] = local;
-			StoreLocal(currentGenerator, local.LocalIndex);
+			StoreLocal(currentGenerator, local);
 		}
 		foreach (var node in body)
 			VisitLogicNode(node);
 		currentGenerator.MarkLabel(isNull);
 		currentGenerator.Emit(OpCodes.Ldc_I4_0);
-		currentGenerator.Emit(OpCodes.Ret);
 	}
 
 	public void Visit(TranslationVariableReference varRef)
 	{
 		LocalBuilder local = locals[varRef.name];
-		LoadLocal(currentGenerator, local.LocalIndex);
+		LoadLocal(currentGenerator, local);
 	}
 
 	public void Visit(TranslationRunImmediate immediate)

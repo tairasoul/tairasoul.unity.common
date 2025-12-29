@@ -2,9 +2,11 @@
 
 syntax reference for the speedrunning dsl.
 
-keywords of note:
+things of note:
 
-`fulfilled` - tells the compiler that this is where it should consider the split completed
+keyword `fulfilled` - tells the compiler that this is where it should consider the split completed
+
+object paths - these start and end with \\, like `\path/to/object\`. / is used to traverse the hierarchy of objects, if an object name has / in it, it should be escaped like `\/`
 
 ## File structure
 
@@ -24,6 +26,20 @@ order has to come first in the file, then split definitions.
 ## Split definitions
 
 split definitions start with a condition, then logic to run.
+
+a split follows the structure of
+
+```
+defsplit splitname
+	condition
+		logic
+```
+
+logic may or may not be optional depending on the condition.
+
+conditions with optional logic have `optional logic` immediately below their header.
+
+## Grouping conditions
 
 there are two grouping conditions, `any` and `all`.
 
@@ -47,7 +63,7 @@ neither of these can be recursively placed within eachother (yet, might look int
 
 ## Split conditions
 
-there are 3 unique condition types, and 7 variants total.
+there are 4 unique condition types, and 8 variants total.
 
 logic is optional for some, and required for others.
 
@@ -75,7 +91,7 @@ optional logic
 
 a bounds condition can also be bound to an object's position and size
 
-`bounds /path/to/object groupedBoundType`
+`bounds \path/to/object\ groupedBoundType`
 
 this bound will then have it's center and size set to the same as the targetted object.
 
@@ -85,7 +101,7 @@ optional logic
 
 a bounds condition can also be bound only to an object's position, with a predefined size
 
-`bounds /path/to/object [x, y, z] groupedBoundType`
+`bounds \path/to/object\ [x, y, z] groupedBoundType`
 
 this bound will have it's center set to the object's position, and the size set to the xyz set.
 
@@ -124,7 +140,7 @@ the object condition allows you to check an object (or a component's) properties
 
 the first variant is as follows
 
-`condition /path/to/object [.property = varname]`
+`condition \path/to/object\ [.property = varname]`
 
 this condition will have issues if multiple objects have the same path.
 
@@ -142,7 +158,7 @@ the second variant of the object condition accesses the properties of a componen
 
 it is as follows
 
-`condition /path/to/object .FullName.Of.Component [.property = varname]`
+`condition \path/to/object\ .FullName.Of.Component [.property = varname]`
 
 `.Fullname.Of.Component` is the full name of the component, as it would appear in UnityExplorer
 
@@ -190,6 +206,22 @@ this has a shorthand, being just `MethodName [args]` instead of `call MethodName
 for example, `call ChangeHudDisplay ["Now at split 5, player health {0}", hp]` will call ChangeHudDisplay("Now at split 5, player health {0}", hp) from the runtime-provided methods, taking `hp` from the variables in the current scope.
 
 these have no return value
+
+## RunImmediate node
+
+a runimmediate condition isn't actually a condition, and just runs your logic the moment the split is hit.
+
+using `fulfilled` in these is not required, as the compiler assumes these nodes are always complete
+
+for example,
+
+```
+defsplit immediate
+	runimmediate
+		call ImmediateCall ["hello!"]
+```
+
+this split will, when reached, call ImmediateCall("hello!") and then move onto the next split.
 
 ## Example
 

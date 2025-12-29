@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Text;
 using MainMenuSettings.Extensions;
 using UnityEngine;
 
@@ -22,15 +23,40 @@ public static class AccessorUtil {
 		GameObjectCache.Clear();
 	}
 
+	static IEnumerable<string> SplitUnescaped(this string text, char separator, char escape = '\\')
+	{
+    var buffer = new StringBuilder();
+    bool escaped = false;
+
+    foreach (char c in text)
+    {
+			if (c == escape && !escaped)
+			{
+				escaped = true;
+			}
+			else if (c == separator && !escaped)
+			{
+				yield return buffer.ToString();
+				buffer.Clear();
+			}
+			else
+			{
+				buffer.Append(c);
+				escaped = false;
+			}
+    }
+    yield return buffer.ToString();
+	}
+
 	public static GameObject? FindGameObject(string path) {
 		if (GameObjectCache.TryGetValue(path, out var go) && go != null)
 			return go;
-		string[] split = path.TrimStart('/').Split('/');
-		GameObject current = GameObject.Find(split[0]);
+		IEnumerable<string> split = SplitUnescaped(path, '/');
+		GameObject current = GameObject.Find(split.ElementAt(0));
 		if (current == null) return null;
-		for (int i = 1; i < split.Length; i++)
+		for (int i = 1; i < split.Count(); i++)
 		{
-			current = current.Find(split[i]);
+			current = current.Find(split.ElementAt(i));
 			if (current == null) return null;
 		}
 		GameObjectCache[path] = current;

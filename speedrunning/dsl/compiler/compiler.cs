@@ -1,10 +1,9 @@
+using System.IO;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
 using Antlr4.Runtime;
-using tairasoul.unity.common.events;
 using tairasoul.unity.common.hashing;
-using tairasoul.unity.common.speedrunning.dsl.internals;
 
 namespace tairasoul.unity.common.speedrunning.dsl.compiler;
 
@@ -52,7 +51,8 @@ class Compiler {
 			foreach (var split in result.results)
 				compilation.Visit((TranslationSplit)split);
 			compilation.Finish();
-			Directory.CreateDirectory(Path.GetDirectoryName(file));
+			if (!string.IsNullOrWhiteSpace(Path.GetDirectoryName(file)))
+				Directory.CreateDirectory(Path.GetDirectoryName(file));
 			builder.Save(Path.GetFileNameWithoutExtension(file) + ".dll");
 			WriteHash(file);
 			return builder;
