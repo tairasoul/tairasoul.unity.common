@@ -25,4 +25,14 @@ static class EmbeddedDependencyLoader {
 			return null;
 		};
 	}
+
+	public static void ForceLoad(AppDomain domain, string prefix, string[] assemblyNames) {
+		foreach (string name in assemblyNames) {
+			var bytes = AssemblyUtils.GetResourceBytes($"{prefix}.{name}.dll");
+			if (bytes.Length <= 0) continue;
+			Console.WriteLine($"Force-loading assembly {name}");
+			Assembly assembly = domain.Load(bytes);
+			Console.WriteLine($"Force-loaded assembly {assembly.FullName}");
+		}
+	}
 }
