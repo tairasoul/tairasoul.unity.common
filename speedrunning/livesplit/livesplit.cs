@@ -54,4 +54,8 @@ public class Livesplit {
 	public void UnpauseGametime() {
 		Send("unpausegametime");
 	}
+
+	public void Reset() {
+		Send("reset");
+	}
 }

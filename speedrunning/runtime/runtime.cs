@@ -114,4 +114,13 @@ public static class RuntimeInterface {
 	public static void GameStarted() {
 		behaviour.IsActive = true;
 	}
+
+	/// <summary>
+	/// Reset the current split file and Livesplit.
+	/// </summary>
+	public static void Reset() {
+		if (behaviour.activeFile == null) return;
+		behaviour.activeFile.Reset();
+		livesplitInstance.Reset();
+	}
 }

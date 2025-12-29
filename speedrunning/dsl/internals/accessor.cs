@@ -25,11 +25,11 @@ public static class AccessorUtil {
 
 	static IEnumerable<string> SplitUnescaped(this string text, char separator, char escape = '\\')
 	{
-    var buffer = new StringBuilder();
-    bool escaped = false;
+		var buffer = new StringBuilder();
+		bool escaped = false;
 
-    foreach (char c in text)
-    {
+		foreach (char c in text)
+		{
 			if (c == escape && !escaped)
 			{
 				escaped = true;
@@ -44,8 +44,8 @@ public static class AccessorUtil {
 				buffer.Append(c);
 				escaped = false;
 			}
-    }
-    yield return buffer.ToString();
+		}
+		yield return buffer.ToString();
 	}
 
 	public static GameObject? FindGameObject(string path) {
