@@ -1297,19 +1297,13 @@ class CompilationVisitor : IVisitor {
 	public void Visit(TranslationObjectCondition objectCond, IEnumerable<TranslationResult> body) {
 		locals.Clear();
 		LocalBuilder goLocal = currentGenerator.DeclareLocal(typeof(GameObject));
-		Label alreadyExists = currentGenerator.DefineLabel();
 		Label isNull = currentGenerator.DefineLabel();
-		LoadLocal(currentGenerator, goLocal);
-		currentGenerator.Emit(OpCodes.Ldnull);
-		currentGenerator.Emit(OpCodes.Ceq);
-		currentGenerator.Emit(OpCodes.Brfalse, alreadyExists);
 		currentGenerator.Emit(OpCodes.Ldstr, RemovePathDelimiters(objectCond.path));
 		currentGenerator.Emit(OpCodes.Call, AccessorUtilFindGameObject);
 		StoreLocal(currentGenerator, goLocal);
 		LoadLocal(currentGenerator, goLocal);
 		currentGenerator.Emit(OpCodes.Ldnull);
 		currentGenerator.Emit(OpCodes.Beq, isNull);
-		currentGenerator.MarkLabel(alreadyExists);
 		foreach (var arg in objectCond.args) {
 			Type? argType = EmitAccessor(currentGenerator, typeof(GameObject), goLocal.LocalIndex, arg.propertyAccess);
 			if (argType == null) continue;
@@ -1329,20 +1323,14 @@ class CompilationVisitor : IVisitor {
 		if (type == null) return;
 		LocalBuilder goLocal = currentGenerator.DeclareLocal(typeof(GameObject));
 		LocalBuilder compLocal = currentGenerator.DeclareLocal(type);
-		Label goExists = currentGenerator.DefineLabel();
 		Label compExists = currentGenerator.DefineLabel();
 		Label isNull = currentGenerator.DefineLabel();
-		LoadLocal(currentGenerator, goLocal);
-		currentGenerator.Emit(OpCodes.Ldnull);
-		currentGenerator.Emit(OpCodes.Ceq);
-		currentGenerator.Emit(OpCodes.Brfalse, goExists);
 		currentGenerator.Emit(OpCodes.Ldstr, RemovePathDelimiters(objectCond.path));
 		currentGenerator.Emit(OpCodes.Call, AccessorUtilFindGameObject);
 		StoreLocal(currentGenerator, goLocal);
 		LoadLocal(currentGenerator, goLocal);
 		currentGenerator.Emit(OpCodes.Ldnull);
 		currentGenerator.Emit(OpCodes.Beq, isNull);
-		currentGenerator.MarkLabel(goExists);
 		LoadLocal(currentGenerator, compLocal);
 		currentGenerator.Emit(OpCodes.Ldnull);
 		currentGenerator.Emit(OpCodes.Ceq);
