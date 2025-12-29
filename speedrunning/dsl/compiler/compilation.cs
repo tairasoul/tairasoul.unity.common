@@ -1409,6 +1409,7 @@ class CompilationVisitor : IVisitor {
 		string[] accesses = fieldName.Trim('.').Split('.');
 		Type prevType = type;
 		Type? memberType = null;
+		LoadLocal(gen, idx);
 		foreach (var access in accesses)
 		{
 			var member = prevType.GetMember(access, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance).Where((v) => v is not MethodInfo).FirstOrDefault();
@@ -1422,7 +1423,6 @@ class CompilationVisitor : IVisitor {
 				memberType = ((PropertyInfo)member).PropertyType;
 			}
 			prevType = memberType;
-			LoadLocal(gen, idx);
 			gen.Emit(OpCodes.Ldstr, access);
 			gen.Emit(OpCodes.Call, AccessorUtilGet.MakeGenericMethod(memberType));
 		}
