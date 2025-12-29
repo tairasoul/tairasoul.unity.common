@@ -12,8 +12,8 @@ namespace tairasoul.unity.common.speedrunning.dsl.internals;
 record AccessorCacheKey(Type type, string fieldName);
 
 public static class AccessorUtil {
-	static Dictionary<AccessorCacheKey, Func<object, object>> CachedAccessors = [];
-	static Dictionary<string, GameObject> GameObjectCache = [];
+	internal static Dictionary<AccessorCacheKey, Func<object, object>> CachedAccessors = [];
+	internal static Dictionary<string, GameObject> GameObjectCache = [];
 
 	internal static bool RemoveElement(Type type, string fieldName) => CachedAccessors.Remove(new(type, fieldName));
 

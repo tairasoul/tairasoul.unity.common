@@ -10,7 +10,7 @@ namespace tairasoul.unity.common.speedrunning.runtime;
 public record FileEntry(bool isDirectory, string name, string relativePath, IEnumerable<FileEntry> entries);
 
 public static class RuntimeInterface {
-	public static Livesplit livesplitInstance;
+	public static ITimer livesplitInstance;
 	static InternalDslOperations dslOp;
 	static Compiler compiler = null;
 	static Assembly current;
@@ -18,10 +18,6 @@ public static class RuntimeInterface {
 	internal static RuntimeBehaviour behaviour;
 
 	static RuntimeInterface() {
-		livesplitInstance = new();
-		livesplitInstance.ConnectPipe();
-		dslOp = new();
-		dslOp.livesplit = livesplitInstance;
 		GameObject go = new("SrDSLRuntimeInterface");
 		GameObject.DontDestroyOnLoad(go);
 		behaviour = go.AddComponent<RuntimeBehaviour>();
@@ -36,8 +32,14 @@ public static class RuntimeInterface {
 	/// <param name="modVersion">Version of the mod that implements runtime-specific components.</param>
 	/// <param name="sourceDir">Source directory for srd files.</param>
 	/// <param name="buildDir">Directory srd files are built to.</param>
-	public static void Setup(string modVersion, string sourceDir, string buildDir) {
+	public static void Setup(string modVersion, string sourceDir, string buildDir, ITimer timer) {
 		compiler = new(buildDir, sourceDir, modVersion);
+		livesplitInstance = timer;
+		livesplitInstance.Connect();
+		dslOp = new()
+		{
+			livesplit = livesplitInstance
+		};
 	}
 
 	/// <summary>

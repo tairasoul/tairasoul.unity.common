@@ -15,7 +15,7 @@ public enum TimerOperation {
 }
 
 public class InternalDslOperations {
-	internal Livesplit livesplit;
+	internal ITimer livesplit;
 
 	public void Timer(TimerOperation operation) {
 		switch (operation) {

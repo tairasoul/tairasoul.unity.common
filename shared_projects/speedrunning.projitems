@@ -19,7 +19,9 @@
     <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/dsl/internals/operations.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/dsl/internals/typefinder.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/dsl/interfaces.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/livesplit/livesplit.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/livesplit/interface.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/livesplit/livesplit-pipe.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/livesplit/livesplit-tcp.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/runtime/behaviour.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/runtime/file-proxy.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/runtime/runtime.cs" />

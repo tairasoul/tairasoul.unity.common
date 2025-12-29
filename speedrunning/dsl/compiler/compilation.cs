@@ -81,10 +81,7 @@ class CompilationVisitor : IVisitor {
 			cgen.Emit(OpCodes.Call, method);
 			cgen.Emit(OpCodes.Brfalse, endOf);
 			cgen.Emit(OpCodes.Ldarg_0);
-			cgen.Emit(OpCodes.Ldarg_0);
-			cgen.Emit(OpCodes.Ldfld, splitIndexField);
-			cgen.Emit(OpCodes.Ldc_I4_1);
-			cgen.Emit(OpCodes.Add);
+			EmitInt(cgen, i + 1);
 			cgen.Emit(OpCodes.Stfld, splitIndexField);
 			cgen.Emit(OpCodes.Newobj, SplitCompleted.GetConstructors().First());
 			cgen.Emit(OpCodes.Ldstr, conditionOrder.ElementAt(i));
@@ -148,7 +145,7 @@ class CompilationVisitor : IVisitor {
 			Visit(fc);
 			foreach (var method in activeInactiveBounds) {
 				currentGenerator.Emit(OpCodes.Ldarg_0);
-				currentGenerator.Emit(OpCodes.Call, method);
+				currentGenerator.Emit(OpCodes.Callvirt, method);
 			}
 			currentGenerator.Emit(OpCodes.Ret);
 			activeInactiveBounds.Clear();
@@ -189,14 +186,14 @@ class CompilationVisitor : IVisitor {
 		for (int i = 0; i < any.conditions.Count(); i++)
 		{
 			currentGenerator.Emit(OpCodes.Ldarg_0);
-			currentGenerator.Emit(OpCodes.Call, ConditionMethods[i]);
+			currentGenerator.Emit(OpCodes.Callvirt, ConditionMethods[i]);
 			currentGenerator.Emit(OpCodes.Brtrue, RunLogic);
 		}
 		currentGenerator.Emit(OpCodes.Br, splitNotCompleted);
 		currentGenerator.MarkLabel(RunLogic);
 		foreach (var method in activeInactiveBounds) {
 			currentGenerator.Emit(OpCodes.Ldarg_0);
-			currentGenerator.Emit(OpCodes.Call, method);
+			currentGenerator.Emit(OpCodes.Callvirt, method);
 		}
 		activeInactiveBounds.Clear();
 		foreach (var logic in any.body) {
@@ -226,12 +223,12 @@ class CompilationVisitor : IVisitor {
 		for (int i = 0; i < all.conditions.Count(); i++)
 		{
 			currentGenerator.Emit(OpCodes.Ldarg_0);
-			currentGenerator.Emit(OpCodes.Call, ConditionMethods[i]);
+			currentGenerator.Emit(OpCodes.Callvirt, ConditionMethods[i]);
 			currentGenerator.Emit(OpCodes.Brfalse, splitNotCompleted);
 		}
 		foreach (var method in activeInactiveBounds) {
 			currentGenerator.Emit(OpCodes.Ldarg_0);
-			currentGenerator.Emit(OpCodes.Call, method);
+			currentGenerator.Emit(OpCodes.Callvirt, method);
 		}
 		activeInactiveBounds.Clear();
 		foreach (var logic in all.body) {
@@ -353,7 +350,7 @@ class CompilationVisitor : IVisitor {
 		currentGenerator.Emit(OpCodes.Ldfld, dslOperationsField);
 		int timerI = (int)timer.operation;
 		EmitInt(currentGenerator, timerI);
-		currentGenerator.Emit(OpCodes.Call, DslOperationsTimerCall);
+		currentGenerator.Emit(OpCodes.Callvirt, DslOperationsTimerCall);
 	}
 
 	public void Visit(TranslationComparison comparison, Label shortCircuit) {
@@ -640,7 +637,7 @@ class CompilationVisitor : IVisitor {
 			LoadLocal(currentGenerator, boundLocal);
 			currentGenerator.Emit(OpCodes.Stfld, boundField);
 			currentGenerator.Emit(OpCodes.Ldarg_0);
-			currentGenerator.Emit(OpCodes.Ldfld, boundField);
+			currentGenerator.Emit(OpCodes.Ldflda, boundField);
 			currentGenerator.Emit(OpCodes.Ldc_R4, Math.Min(grouped.start.x, grouped.end.x));
 			currentGenerator.Emit(OpCodes.Ldc_R4, Math.Min(grouped.start.y, grouped.end.y));
 			currentGenerator.Emit(OpCodes.Ldc_R4, Math.Min(grouped.start.z, grouped.end.z));
@@ -649,7 +646,7 @@ class CompilationVisitor : IVisitor {
 			currentGenerator.Emit(OpCodes.Ldc_R4, Math.Max(grouped.start.y, grouped.end.y));
 			currentGenerator.Emit(OpCodes.Ldc_R4, Math.Max(grouped.start.z, grouped.end.z));
 			currentGenerator.Emit(OpCodes.Newobj, typeof(Vector3).GetConstructor([typeof(float), typeof(float), typeof(float)]));
-			currentGenerator.Emit(OpCodes.Call, BoundsSetMinMax);
+			currentGenerator.Emit(OpCodes.Callvirt, BoundsSetMinMax);
 			currentGenerator.Emit(OpCodes.Ldarg_0);
 			currentGenerator.Emit(OpCodes.Ldfld, boundRegistryField);
 			currentGenerator.Emit(OpCodes.Ldarg_0);
@@ -731,7 +728,7 @@ class CompilationVisitor : IVisitor {
 			LoadLocal(currentGenerator, boundLocal);
 			currentGenerator.Emit(OpCodes.Stfld, boundField);
 			currentGenerator.Emit(OpCodes.Ldarg_0);
-			currentGenerator.Emit(OpCodes.Ldfld, boundField);
+			currentGenerator.Emit(OpCodes.Ldflda, boundField);
 			currentGenerator.Emit(OpCodes.Ldc_R4, Math.Min(grouped.start.x, grouped.end.x));
 			currentGenerator.Emit(OpCodes.Ldc_R4, Math.Min(grouped.start.y, grouped.end.y));
 			currentGenerator.Emit(OpCodes.Ldc_R4, Math.Min(grouped.start.z, grouped.end.z));
@@ -740,7 +737,8 @@ class CompilationVisitor : IVisitor {
 			currentGenerator.Emit(OpCodes.Ldc_R4, Math.Max(grouped.start.y, grouped.end.y));
 			currentGenerator.Emit(OpCodes.Ldc_R4, Math.Max(grouped.start.z, grouped.end.z));
 			currentGenerator.Emit(OpCodes.Newobj, typeof(Vector3).GetConstructor([typeof(float), typeof(float), typeof(float)]));
-			currentGenerator.Emit(OpCodes.Call, BoundsSetMinMax);
+			currentGenerator.Emit(OpCodes.Constrained, typeof(Bounds));
+			currentGenerator.Emit(OpCodes.Callvirt, BoundsSetMinMax);
 			currentGenerator.Emit(OpCodes.Ldarg_0);
 			currentGenerator.Emit(OpCodes.Ldfld, boundRegistryField);
 			currentGenerator.Emit(OpCodes.Ldarg_0);
@@ -1304,7 +1302,7 @@ class CompilationVisitor : IVisitor {
 		LoadLocal(currentGenerator, goLocal);
 		currentGenerator.Emit(OpCodes.Ldnull);
 		currentGenerator.Emit(OpCodes.Ceq);
-		currentGenerator.Emit(OpCodes.Brtrue_S, alreadyExists);
+		currentGenerator.Emit(OpCodes.Brfalse, alreadyExists);
 		currentGenerator.Emit(OpCodes.Ldstr, RemovePathDelimiters(objectCond.path));
 		currentGenerator.Emit(OpCodes.Call, AccessorUtilFindGameObject);
 		StoreLocal(currentGenerator, goLocal);
@@ -1337,7 +1335,7 @@ class CompilationVisitor : IVisitor {
 		LoadLocal(currentGenerator, goLocal);
 		currentGenerator.Emit(OpCodes.Ldnull);
 		currentGenerator.Emit(OpCodes.Ceq);
-		currentGenerator.Emit(OpCodes.Brtrue_S, goExists);
+		currentGenerator.Emit(OpCodes.Brfalse, goExists);
 		currentGenerator.Emit(OpCodes.Ldstr, RemovePathDelimiters(objectCond.path));
 		currentGenerator.Emit(OpCodes.Call, AccessorUtilFindGameObject);
 		StoreLocal(currentGenerator, goLocal);
@@ -1348,10 +1346,10 @@ class CompilationVisitor : IVisitor {
 		LoadLocal(currentGenerator, compLocal);
 		currentGenerator.Emit(OpCodes.Ldnull);
 		currentGenerator.Emit(OpCodes.Ceq);
-		currentGenerator.Emit(OpCodes.Brtrue_S, compExists);
+		currentGenerator.Emit(OpCodes.Brfalse, compExists);
 		currentGenerator.Emit(OpCodes.Ldtoken, type);
-		currentGenerator.Emit(OpCodes.Call, typeof(Type).GetMethod("GetTypeFromHandle"));
-		currentGenerator.Emit(OpCodes.Call, GetComponent.MakeGenericMethod(type));
+		currentGenerator.Emit(OpCodes.Callvirt, typeof(Type).GetMethod("GetTypeFromHandle"));
+		currentGenerator.Emit(OpCodes.Callvirt, GetComponent.MakeGenericMethod(type));
 		StoreLocal(currentGenerator, compLocal);
 		LoadLocal(currentGenerator, compLocal);
 		currentGenerator.Emit(OpCodes.Ldnull);
