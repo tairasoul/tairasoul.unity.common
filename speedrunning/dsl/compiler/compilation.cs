@@ -48,6 +48,9 @@ class CompilationVisitor : IVisitor {
 	List<MethodBuilder> activeInactiveBounds = [];
 	List<FieldBuilder> falseInits = [];
 	List<FieldBuilder> boundResets = [];
+	Dictionary<string, Type> variableTypes = [];
+	bool RedirectFulfilled = false;
+	Action FulfilledRedirect = () => { };
 	int events = 0;
 	int bounds = 0;
 	ConstructorBuilder constructor;
@@ -154,8 +157,12 @@ class CompilationVisitor : IVisitor {
 	void VisitLogicNode(TranslationResult res) {
 		if (res is TranslationTimerCall timerCall)
 			Visit(timerCall);
-		else if (res is TranslationFulfilled fulfilled)
-			Visit(fulfilled);
+		else if (res is TranslationFulfilled fulfilled) {
+			if (!RedirectFulfilled)
+				Visit(fulfilled);
+			else
+				FulfilledRedirect();
+		}
 		else if (res is TranslationMethodCall method)
 			Visit(method);
 		else if (res is TranslationIf _subif)
@@ -349,40 +356,156 @@ class CompilationVisitor : IVisitor {
 		currentGenerator.Emit(OpCodes.Call, DslOperationsTimerCall);
 	}
 
+	public void Visit(TranslationBinary binary) {
+		if (binary.lh is TranslationLiteral ll && binary.rh is TranslationLiteral rl)
+		{
+			switch (binary.operation)
+			{
+				case BinaryOperation.Add:
+					EmitAdd(ll, rl);
+					break;
+				case BinaryOperation.Subtract:
+					EmitSubtract(ll, rl);
+					break;
+				case BinaryOperation.Multiply:
+					EmitMultiply(ll, rl);
+					break;
+				case BinaryOperation.Divide:
+					EmitDivide(ll, rl);
+					break;
+			}
+		}
+		else if (binary.rh is TranslationBinary bin)
+		{
+			Visit(bin);
+			if (binary.lh is TranslationLiteral lliteral)
+				Visit(lliteral);
+			else if (binary.lh is TranslationVariableReference lref) {
+				Visit(lref);
+			}
+		}
+		else {
+			if (binary.lh is TranslationLiteral lliteral)
+				Visit(lliteral);
+			else if (binary.lh is TranslationVariableReference lref) {
+				Visit(lref);
+			}
+			if (binary.rh is TranslationLiteral rliteral)
+				Visit(rliteral);
+			else if (binary.rh is TranslationVariableReference rref) {
+				Visit(rref);
+			}
+		}
+		switch (binary.operation) {
+			case BinaryOperation.Add:
+				currentGenerator.Emit(OpCodes.Add);
+				break;
+			case BinaryOperation.Subtract:
+				currentGenerator.Emit(OpCodes.Sub);
+				break;
+			case BinaryOperation.Divide:
+				currentGenerator.Emit(OpCodes.Div);
+				break;
+			case BinaryOperation.Multiply:
+				currentGenerator.Emit(OpCodes.Mul);
+				break;
+		}
+	}
+
+	bool IsNativePrimitive(Type type) {
+		return type == typeof(int) || type == typeof(float) || type == typeof(bool);
+	}
+
 	public void Visit(TranslationComparison comparison, Label shortCircuit) {
 		TranslationResult lh = comparison.lh;
 		ComparisonType comparisonType = comparison.comparison;
 		TranslationResult rh = comparison.rh;
+		Type? lhType = null;
+		Type? rhType = null;
 		if (lh is TranslationVariableReference lref) {
 			Visit(lref);
+			lhType = variableTypes[lref.name];
 		}
 		else if (lh is TranslationLiteral lliteral)
+		{
 			Visit(lliteral);
+			lhType = lliteral.value.GetType();
+		}
 		else if (lh is TranslationBinary lbinary)
 			Visit(lbinary);
 		if (rh is TranslationVariableReference rref) {
 			Visit(rref);
+			rhType = variableTypes[rref.name];
 		}
 		else if (rh is TranslationLiteral rliteral)
+		{
 			Visit(rliteral);
+			rhType = rliteral.value.GetType();
+		}
 		else if (rh is TranslationBinary rbinary)
 			Visit(rbinary);
+		bool doCompMethod = false;
+		if (lhType != null && rhType != null) {
+			if (!IsNativePrimitive(lhType) && !IsNativePrimitive(rhType)) {
+				doCompMethod = true;
+			}
+		}
 		switch (comparisonType) {
 			case ComparisonType.Equals:
-				currentGenerator.Emit(OpCodes.Ceq);
+				if (!doCompMethod)
+				{
+					currentGenerator.Emit(OpCodes.Ceq);
+				}
+				else {
+					currentGenerator.Emit(OpCodes.Call, lhType.GetMethod("op_Equality", [lhType, rhType]));
+				}
 				currentGenerator.Emit(OpCodes.Brfalse, shortCircuit);
 				break;
+			case ComparisonType.NotEquals:
+				if (!doCompMethod)
+				{
+					currentGenerator.Emit(OpCodes.Ceq);
+				}
+				else {
+					currentGenerator.Emit(OpCodes.Call, lhType.GetMethod("op_Inequality", [lhType, rhType]));
+				}
+				currentGenerator.Emit(OpCodes.Brtrue, shortCircuit);
+				break;
 			case ComparisonType.LessOrEqual:
-				currentGenerator.Emit(OpCodes.Bgt, shortCircuit);
+				if (!doCompMethod)
+				{
+					currentGenerator.Emit(OpCodes.Bgt, shortCircuit);
+				}
+				else {
+					currentGenerator.Emit(OpCodes.Call, lhType.GetMethod("op_LessThanOrEqual", [lhType, rhType]));
+				}
 				break;
 			case ComparisonType.LessThan:
-				currentGenerator.Emit(OpCodes.Bge, shortCircuit);
+				if (!doCompMethod)
+				{
+					currentGenerator.Emit(OpCodes.Bge, shortCircuit);
+				}
+				else {
+					currentGenerator.Emit(OpCodes.Call, lhType.GetMethod("op_LessThan", [lhType, rhType]));
+				}
 				break;
 			case ComparisonType.GreaterOrEqual:
-				currentGenerator.Emit(OpCodes.Blt, shortCircuit);
+				if (!doCompMethod)
+				{
+					currentGenerator.Emit(OpCodes.Blt, shortCircuit);
+				}
+				else {
+					currentGenerator.Emit(OpCodes.Call, lhType.GetMethod("op_GreaterThanOrEqual", [lhType, rhType]));
+				}
 				break;
 			case ComparisonType.GreaterThan:
-				currentGenerator.Emit(OpCodes.Ble, shortCircuit);
+				if (!doCompMethod)
+				{
+					currentGenerator.Emit(OpCodes.Ble, shortCircuit);
+				}
+				else {
+					currentGenerator.Emit(OpCodes.Call, lhType.GetMethod("op_GreaterThan", [lhType, rhType]));
+				}
 				break;
 		}
 	}
@@ -463,62 +586,6 @@ class CompilationVisitor : IVisitor {
 		}
 	}
 
-	public void Visit(TranslationBinary binary) {
-		if (binary.lh is TranslationLiteral ll && binary.rh is TranslationLiteral rl)
-		{
-			switch (binary.operation)
-			{
-				case BinaryOperation.Add:
-					EmitAdd(ll, rl);
-					break;
-				case BinaryOperation.Subtract:
-					EmitSubtract(ll, rl);
-					break;
-				case BinaryOperation.Multiply:
-					EmitMultiply(ll, rl);
-					break;
-				case BinaryOperation.Divide:
-					EmitDivide(ll, rl);
-					break;
-			}
-		}
-		else if (binary.rh is TranslationBinary bin)
-		{
-			Visit(bin);
-			if (binary.lh is TranslationLiteral lliteral)
-				Visit(lliteral);
-			else if (binary.lh is TranslationVariableReference lref) {
-				Visit(lref);
-			}
-		}
-		else {
-			if (binary.lh is TranslationLiteral lliteral)
-				Visit(lliteral);
-			else if (binary.lh is TranslationVariableReference lref) {
-				Visit(lref);
-			}
-			if (binary.rh is TranslationLiteral rliteral)
-				Visit(rliteral);
-			else if (binary.rh is TranslationVariableReference rref) {
-				Visit(rref);
-			}
-		}
-		switch (binary.operation) {
-			case BinaryOperation.Add:
-				currentGenerator.Emit(OpCodes.Add);
-				break;
-			case BinaryOperation.Subtract:
-				currentGenerator.Emit(OpCodes.Sub);
-				break;
-			case BinaryOperation.Divide:
-				currentGenerator.Emit(OpCodes.Div);
-				break;
-			case BinaryOperation.Multiply:
-				currentGenerator.Emit(OpCodes.Mul);
-				break;
-		}
-	}
-
 	public void Visit(TranslationIf _if) {
 		Label Short = currentGenerator.DefineLabel();
 		TranslationLogicalChain logical = (TranslationLogicalChain)_if.condition;
@@ -565,7 +632,7 @@ class CompilationVisitor : IVisitor {
 		else if (literal.value.GetType() == typeof(float))
 			currentGenerator.Emit(OpCodes.Ldc_R4, (float)literal.value);
 		else if (literal.value.GetType() == typeof(string))
-			currentGenerator.Emit(OpCodes.Ldstr, (string)literal.value);
+			currentGenerator.Emit(OpCodes.Ldstr, RemoveStringQuotes((string)literal.value));
 		else if (literal.value.GetType() == typeof(bool))
 			if ((bool)literal.value)
 				currentGenerator.Emit(OpCodes.Ldc_I4_1);
@@ -763,6 +830,18 @@ class CompilationVisitor : IVisitor {
 				currentGenerator.Emit(OpCodes.Ceq);
 			}
 		}
+	}
+
+	string RemoveStringQuotes(string path) {
+		string result = path;
+		char target = '"';
+		int first = path.IndexOf(target);
+		if (first >= 0)
+			result = result.Remove(first, 1);
+		int last = path.LastIndexOf(target);
+		if (last >= 0 && last != first)
+			result = result.Remove(last - (first < last ? 1 : 0), 1);
+		return result;
 	}
 
 	string RemovePathDelimiters(string path) {
@@ -1143,6 +1222,7 @@ class CompilationVisitor : IVisitor {
 
 	public void Visit(TranslationEventListen eventListen, IEnumerable<TranslationResult> body) {
 		locals.Clear();
+		variableTypes.Clear();
 		int ev = events++;
 		FieldBuilder listenStarted = currentClass.DefineField($"events_listening{ev}", typeof(bool), FieldAttributes.Private);
 		FieldBuilder fulfilled = currentClass.DefineField($"event_fulfilled{ev}", typeof(bool), FieldAttributes.Private);
@@ -1158,7 +1238,7 @@ class CompilationVisitor : IVisitor {
 		MethodBuilder listenMethod = currentClass.DefineMethod($"event_listen{ev}", MethodAttributes.Private, typeof(void), [typeof(EventData)]);
 		ILGenerator gen = listenMethod.GetILGenerator();
 		LocalBuilder evdLoc = gen.DeclareLocal(typeof(object[]));
-		gen.Emit(OpCodes.Ldarg_0);
+		gen.Emit(OpCodes.Ldarg_1);
 		gen.Emit(OpCodes.Castclass, DslDataType);
 		gen.Emit(OpCodes.Call, DslDataArgs);
 		StoreLocal(gen, evdLoc);
@@ -1166,26 +1246,30 @@ class CompilationVisitor : IVisitor {
 		for (int i = 0; i < eventListen.args.Count(); i++) {
 			var e = eventListen.args.ElementAt(i);
 			locals[e.name] = gen.DeclareLocal(evTypes[i]);
+			variableTypes[e.name] = evTypes[i];
 			LoadLocal(gen, evdLoc);
-			gen.Emit(OpCodes.Ldelem_Ref, i);
+			EmitInt(gen, i);
+			gen.Emit(OpCodes.Ldelem_Ref);
 			ConvertIL(gen, evTypes[i]);
 			StoreLocal(gen, locals[e.name]);
 		}
 		ILGenerator _b = currentGenerator;
 		currentGenerator = gen;
+		RedirectFulfilled = true;
+		FulfilledRedirect = () =>
+		{
+			gen.Emit(OpCodes.Ldarg_0);
+			gen.Emit(OpCodes.Ldc_I4_1);
+			gen.Emit(OpCodes.Stfld, fulfilled);
+			gen.Emit(OpCodes.Ldstr, eventListen.ev);
+			gen.Emit(OpCodes.Newobj, DslIdType.GetConstructor([typeof(string)]));
+			gen.Emit(OpCodes.Ldstr, $"event_listen{ev}");
+			gen.Emit(OpCodes.Call, EventBusStop.MakeGenericMethod(DslIdType));
+		};
 		foreach (var b_node in body) {
-			if (b_node is TranslationFulfilled) {
-				gen.Emit(OpCodes.Ldarg_0);
-				gen.Emit(OpCodes.Ldc_I4_1);
-				gen.Emit(OpCodes.Stfld, fulfilled);
-				gen.Emit(OpCodes.Ldstr, eventListen.ev);
-				gen.Emit(OpCodes.Newobj, DslIdType.GetConstructor([typeof(string)]));
-				gen.Emit(OpCodes.Ldstr, $"event_listen{ev}");
-				gen.Emit(OpCodes.Call, EventBusStop.MakeGenericMethod(DslIdType));
-			}
-			else
-				VisitLogicNode(b_node);
+			VisitLogicNode(b_node);
 		}
+		RedirectFulfilled = false;
 		gen.Emit(OpCodes.Ret);
 		currentGenerator = _b;
 		currentGenerator.Emit(OpCodes.Ldstr, eventListen.ev);
@@ -1203,6 +1287,7 @@ class CompilationVisitor : IVisitor {
 
 	public void Visit(TranslationEventListenGrouped grouped) {
 		locals.Clear();
+		variableTypes.Clear();
 		int ev = events++;
 		FieldBuilder listenStarted = currentClass.DefineField($"events_listening{ev}", typeof(bool), FieldAttributes.Private);
 		FieldBuilder fulfilled = currentClass.DefineField($"event_fulfilled{ev}", typeof(bool), FieldAttributes.Private);
@@ -1255,10 +1340,13 @@ class CompilationVisitor : IVisitor {
 					currentGenerator.Emit(OpCodes.Ldarg_0);
 					currentGenerator.Emit(OpCodes.Call, method);
 				}
+				RedirectFulfilled = true;
+				FulfilledRedirect = () => { };
 				foreach (var logic in fullCond.body) {
 					if (logic is TranslationFulfilled) continue;
 					VisitLogicNode(logic);
 				}
+				RedirectFulfilled = false;
 				currentGenerator.MarkLabel(dontStopListening);
 				activeInactiveBounds.Clear();
 				break;
@@ -1275,10 +1363,13 @@ class CompilationVisitor : IVisitor {
 					currentGenerator.Emit(OpCodes.Ldarg_0);
 					currentGenerator.Emit(OpCodes.Call, method);
 				}
+				RedirectFulfilled = true;
+				FulfilledRedirect = () => { };
 				foreach (var logic in fullCond.body) {
 					if (logic is TranslationFulfilled) continue;
 					VisitLogicNode(logic);
 				}
+				RedirectFulfilled = false;
 				currentGenerator.MarkLabel(dontStopListening2);
 				activeInactiveBounds.Clear();
 				break;
@@ -1292,10 +1383,13 @@ class CompilationVisitor : IVisitor {
 					currentGenerator.Emit(OpCodes.Ldarg_0);
 					currentGenerator.Emit(OpCodes.Call, method);
 				}
+				RedirectFulfilled = true;
+				FulfilledRedirect = () => { };
 				foreach (var logic in fullCond.body) {
 					if (logic is TranslationFulfilled) continue;
 					VisitLogicNode(logic);
 				}
+				RedirectFulfilled = false;
 				currentGenerator.MarkLabel(dontStopListening3);
 				activeInactiveBounds.Clear();
 				break;
@@ -1337,6 +1431,7 @@ class CompilationVisitor : IVisitor {
 
 	public void Visit(TranslationObjectCondition objectCond, IEnumerable<TranslationResult> body) {
 		locals.Clear();
+		variableTypes.Clear();
 		LocalBuilder goLocal = currentGenerator.DeclareLocal(typeof(GameObject));
 		Label isNull = currentGenerator.DefineLabel();
 		currentGenerator.Emit(OpCodes.Ldstr, RemovePathDelimiters(objectCond.path));
@@ -1350,6 +1445,7 @@ class CompilationVisitor : IVisitor {
 			if (argType == null) continue;
 			var local = currentGenerator.DeclareLocal(argType);
 			locals[arg.name] = local;
+			variableTypes[arg.name] = argType;
 			StoreLocal(currentGenerator, local);
 		}
 		foreach (var node in body)
@@ -1360,6 +1456,7 @@ class CompilationVisitor : IVisitor {
 
 	public void Visit(TranslationObjectComponentCondition objectCond, IEnumerable<TranslationResult> body) {
 		locals.Clear();
+		variableTypes.Clear();
 		Type type = Typefinder.FindType(objectCond.component);
 		if (type == null) return;
 		LocalBuilder goLocal = currentGenerator.DeclareLocal(typeof(GameObject));
@@ -1382,6 +1479,7 @@ class CompilationVisitor : IVisitor {
 			if (argType == null) continue;
 			var local = currentGenerator.DeclareLocal(argType);
 			locals[arg.name] = local;
+			variableTypes[arg.name] = argType;
 			StoreLocal(currentGenerator, local);
 		}
 		foreach (var node in body)

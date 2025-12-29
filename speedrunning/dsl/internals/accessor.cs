@@ -92,8 +92,7 @@ public static class AccessorUtil {
 						true);
 					ILGenerator gen = dm.GetILGenerator();
 					gen.Emit(OpCodes.Ldsfld, field);
-					if (field.FieldType.IsValueType)
-						gen.Emit(OpCodes.Box, field.FieldType);
+					gen.Emit(OpCodes.Box, field.FieldType);
 					gen.Emit(OpCodes.Ret);
 					Func<object> access = (Func<object>)dm.CreateDelegate(typeof(Func<object>));
 					CachedAccessors[key] = (_) => access();
@@ -121,8 +120,7 @@ public static class AccessorUtil {
 					gen.Emit(OpCodes.Ldarg_0);
 					gen.Emit(OpCodes.Castclass, type);
 					gen.Emit(OpCodes.Ldfld, field);
-					if (field.FieldType.IsValueType)
-						gen.Emit(OpCodes.Box, field.FieldType);
+					gen.Emit(OpCodes.Box, field.FieldType);
 					gen.Emit(OpCodes.Ret);
 					Func<object, object> access = (Func<object, object>)dm.CreateDelegate(typeof(Func<object, object>));
 					CachedAccessors[key] = access;
@@ -149,8 +147,7 @@ public static class AccessorUtil {
 						true);
 					ILGenerator gen = dm.GetILGenerator();
 					gen.Emit(OpCodes.Call, property.GetGetMethod(true));
-					if (property.PropertyType.IsValueType)
-						gen.Emit(OpCodes.Box, property.PropertyType);
+					gen.Emit(OpCodes.Box, property.PropertyType);
 					gen.Emit(OpCodes.Ret);
 					Func<object> access = (Func<object>)dm.CreateDelegate(typeof(Func<object>));
 					CachedAccessors[key] = (_) => access();
@@ -178,8 +175,7 @@ public static class AccessorUtil {
 					gen.Emit(OpCodes.Ldarg_0);
 					gen.Emit(OpCodes.Castclass, type);
 					gen.Emit(OpCodes.Call, property.GetGetMethod(true));
-					if (property.PropertyType.IsValueType)
-						gen.Emit(OpCodes.Box, property.PropertyType);
+					gen.Emit(OpCodes.Box, property.PropertyType);
 					gen.Emit(OpCodes.Ret);
 					Func<object, object> access = (Func<object, object>)dm.CreateDelegate(typeof(Func<object, object>));
 					CachedAccessors[key] = access;

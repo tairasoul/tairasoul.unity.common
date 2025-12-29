@@ -147,6 +147,10 @@ MULTIPLY
 	: '*'
 	;
 
+STRING
+	: '"' .*? '"'
+	;
+
 DIVIDE
 	: '/'
 	;

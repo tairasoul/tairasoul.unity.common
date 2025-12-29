@@ -23,6 +23,7 @@ enum ComparisonType {
 	LessThan,
 	GreaterOrEqual,
 	GreaterThan,
+	NotEquals
 }
 
 enum ChainType {
@@ -283,6 +284,7 @@ class TranslationVisitor : AbstractParseTreeVisitor<TranslationResult>, ISrDslPa
 			"<" => ComparisonType.LessThan,
 			">=" => ComparisonType.GreaterOrEqual,
 			">" => ComparisonType.GreaterThan,
+			"!=" => ComparisonType.NotEquals,
 			_ => throw new NotImplementedException("how")
 		};
 		TranslationResult rh = VisitComparison_binaryrh_node(context.rh);
@@ -343,8 +345,8 @@ class TranslationVisitor : AbstractParseTreeVisitor<TranslationResult>, ISrDslPa
 		else if (dtc is SrDslParser.Bool_dtContext boolCtx) {
 			return VisitBool_dt(boolCtx);
 		}
-		else if (context.string_() != null) {
-			return new TranslationLiteral(context.string_().content.Text);
+		else if (context.STRING() != null) {
+			return new TranslationLiteral(context.GetText());
 		}
 		else {
 			return new TranslationVariableReference(dtc.GetText());
@@ -600,11 +602,6 @@ class TranslationVisitor : AbstractParseTreeVisitor<TranslationResult>, ISrDslPa
 	public TranslationResult VisitSplit_order([NotNull] SrDslParser.Split_orderContext context)
 	{
 		return new TranslationSplitOrder(context._order_def.Select(v => v.Text));
-	}
-
-	public TranslationResult VisitString_([NotNull] SrDslParser.String_Context context)
-	{
-		throw new NotImplementedException();
 	}
 
 	public TranslationResult VisitTimer_node([NotNull] SrDslParser.Timer_nodeContext context)

@@ -114,6 +114,7 @@ public static class RuntimeInterface {
 	/// Call when splits should start running.
 	/// </summary>
 	public static void GameStarted() {
+		Reset();
 		behaviour.IsActive = true;
 	}
 

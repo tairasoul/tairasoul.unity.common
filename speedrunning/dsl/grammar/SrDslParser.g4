@@ -213,13 +213,9 @@ object_condition_component
 	;
 
 datatype
-	: string_
+	: STRING
 	| number
 	| bool_dt
-	;
-
-string_
-	: <content> '"' content=.*? '"'
 	;
 
 number 
