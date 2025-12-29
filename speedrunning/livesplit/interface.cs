@@ -2,6 +2,7 @@ namespace tairasoul.unity.common.speedrunning.livesplit;
 
 public interface ITimer {
 	public void Connect();
+	public void Disconnect();
 	public void Split();
 	public void StartOrSplit();
 	public void Start();

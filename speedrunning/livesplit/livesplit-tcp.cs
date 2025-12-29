@@ -12,7 +12,13 @@ public class LivesplitTCP : ITimer {
 		_client.Connect("localhost", port);
 	}
 
+	public void Disconnect() {
+		_client.Close();
+		_client = null;
+	}
+
 	async void Send(string command) {
+		if (_client == null || !_client.Connected) return;
 		byte[] data = Encoding.UTF8.GetBytes(command + "\n");
 		await _client.GetStream().WriteAsync(data, 0, data.Length);
 		await _client.GetStream().FlushAsync();

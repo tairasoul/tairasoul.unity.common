@@ -9,6 +9,11 @@ public class Livesplit : ITimer {
 		pipe = new NamedPipeClientStream(".", "Livesplit", PipeDirection.InOut, PipeOptions.Asynchronous);
 	}
 
+	public void Disconnect() {
+		pipe.Close();
+		pipe = null;
+	}
+
 	async void Send(string command) {
 		if (pipe == null || !pipe.IsConnected) {
 			Connect();
