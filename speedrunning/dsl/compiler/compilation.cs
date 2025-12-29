@@ -65,21 +65,23 @@ class CompilationVisitor : IVisitor {
 		fg.Emit(OpCodes.Ret);
 		MethodBuilder ccs = currentClass.DefineMethod("CallCurrentSplit", MethodAttributes.Public, typeof(void), []);
 		ILGenerator cgen = ccs.GetILGenerator();
-		Label endOf = cgen.DefineLabel();
 		Label[] switchLabels = new Label[conditionOrder.Count()];
 		for (int i = 0; i < conditionOrder.Count(); i++)
 			switchLabels[i] = cgen.DefineLabel();
 		cgen.Emit(OpCodes.Ldarg_0);
 		cgen.Emit(OpCodes.Ldfld, splitIndexField);
 		cgen.Emit(OpCodes.Switch, switchLabels);
-		cgen.Emit(OpCodes.Br, endOf);
+		cgen.Emit(OpCodes.Ret);
 		for (int i = 0; i < conditionOrder.Count(); i++) {
 			cgen.MarkLabel(switchLabels[i]);
 			cgen.Emit(OpCodes.Ldarg_0);
 			MethodBuilder method = currentClass.DefineMethod(conditionOrder.ElementAt(i) + "condition", MethodAttributes.Public, CallingConventions.HasThis, typeof(bool), []);
 			methods[conditionOrder.ElementAt(i)] = method;
+			Label doTrue = cgen.DefineLabel();
 			cgen.Emit(OpCodes.Call, method);
-			cgen.Emit(OpCodes.Brfalse, endOf);
+			cgen.Emit(OpCodes.Brtrue_S, doTrue);
+			cgen.Emit(OpCodes.Ret);
+			cgen.MarkLabel(doTrue);
 			cgen.Emit(OpCodes.Ldarg_0);
 			EmitInt(cgen, i + 1);
 			cgen.Emit(OpCodes.Stfld, splitIndexField);
@@ -87,11 +89,8 @@ class CompilationVisitor : IVisitor {
 			cgen.Emit(OpCodes.Ldstr, conditionOrder.ElementAt(i));
 			cgen.Emit(OpCodes.Newobj, SplitCompletedData.GetConstructor([typeof(string)]));
 			cgen.Emit(OpCodes.Call, EventBusSend.MakeGenericMethod(SplitCompleted));
-			if (i != conditionOrder.Count() - 1)
-				cgen.Emit(OpCodes.Br, endOf);
+			cgen.Emit(OpCodes.Ret);
 		}
-		cgen.MarkLabel(endOf);
-		cgen.Emit(OpCodes.Ret);
 		constructor = currentClass.DefineConstructor(MethodAttributes.Public, CallingConventions.HasThis, [InternalDslOperationsType, typeof(IBoundsRegistry)]);
 		ILGenerator gen = constructor.GetILGenerator();
 		gen.Emit(OpCodes.Ldarg_0);
