@@ -182,7 +182,8 @@ start, split, startorsplit, skipsplit, pause, resume, unsplit, pausegametime, un
 
 an if statement works the same as any other language
 
-```if x >= 5 and y <= 500
+```
+if x >= 5 and y <= 500
 	timer pause
 else if x <= 900 and y >= 5
 	timer split
