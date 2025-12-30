@@ -24,30 +24,16 @@ static unsafe class Murmur3
 	}
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	static ulong getblock64(ulong* p, int i) => p[i];
-	public static string Hash128(string input)
-	{
-		return Hash128(input, 104729);
-	}
-
-	public static string Hash128(string input, uint seed)
+	public static string Hash128(string input, uint seed = 104729)
 	{
 		byte[] bytes = Encoding.UTF8.GetBytes(input);
 		return Hash128(bytes, seed);
 	}
 
 #if MURMUR3_SPANS
-		public static string Hash128(ReadOnlySpan<byte> bytes) {
-			return Hash128(bytes, 104729);
-		}
-
-		public static string Hash128(ReadOnlySpan<byte> bytes, uint seed) {
+	public static string Hash128(ReadOnlySpan<byte> bytes, uint seed = 104729) {
 #else
-	public static string Hash128(byte[] bytes)
-	{
-		return Hash128(bytes, 104729);
-	}
-
-	public static string Hash128(byte[] bytes, uint seed)
+	public static string Hash128(byte[] bytes, uint seed = 104729)
 	{
 #endif
 		int len = bytes.Length;
