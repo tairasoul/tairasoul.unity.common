@@ -3,8 +3,8 @@ using UnityEngine;
 
 namespace tairasoul.unity.common.speedrunning.dsl.internals;
 
-record fullBound(Bounds bounds, GameObject gameObject);
-record partialBound(Bounds bounds, GameObject gameObject, Coordinate size);
+record struct fullBound(Bounds bounds, GameObject gameObject);
+record struct partialBound(Bounds bounds, GameObject gameObject, Coordinate size);
 
 public static class BoundsBinder {
 	static List<fullBound> fullBounds = [];
@@ -23,12 +23,14 @@ public static class BoundsBinder {
 			var b = fullBounds[i];
 			Bounds bo = b.bounds;
 			bo.center = b.gameObject.transform.position;
-			bo.size = b.gameObject.transform.localScale;
+			bo.size = b.gameObject.transform.lossyScale;
+			b.bounds = bo;
 		}
 		for (int i = 0; i < partialBounds.Count; i++) {
 			var b = fullBounds[i];
 			Bounds bo = b.bounds;
 			bo.center = b.gameObject.transform.position;
+			b.bounds = bo;
 		}
 	}
 
