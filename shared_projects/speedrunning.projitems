@@ -14,7 +14,6 @@
     <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/dsl/compiler/visitor.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/dsl/event-bus/event_types.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/dsl/event-bus/types.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/dsl/internals/accessor.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/dsl/internals/bounds_binder.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/dsl/internals/operations.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)../speedrunning/dsl/internals/typefinder.cs" />

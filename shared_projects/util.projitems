@@ -1,6 +1,11 @@
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Condition="$(IncludeAccessorFind) != 'false'">
+    <DefineConstants>$(DefineConstants);ACCESSOR_INCLUDE_FINDFUNC</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup>
-    <Compile Include="$(MSBuildThisFileDirectory)../util/action_queue.cs" Condition="$(IncludeActionQueue) == 'true'"/>
+    <Compile Include="$(MSBuildThisFileDirectory)../util/accessor.cs"/>
+    <Compile Include="$(MSBuildThisFileDirectory)../util/action_queue.cs" Condition="$(IncludeActionQueue) != 'false'"/>
     <Compile Include="$(MSBuildThisFileDirectory)../util/casts.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)../util/assembly.cs" />
   </ItemGroup>

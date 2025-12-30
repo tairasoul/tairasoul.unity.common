@@ -3,6 +3,7 @@ using tairasoul.unity.common.speedrunning.dsl.compiler;
 using tairasoul.unity.common.speedrunning.dsl.config;
 using tairasoul.unity.common.speedrunning.dsl.internals;
 using tairasoul.unity.common.speedrunning.livesplit;
+using tairasoul.unity.common.util;
 using UnityEngine;
 
 namespace tairasoul.unity.common.speedrunning.runtime;

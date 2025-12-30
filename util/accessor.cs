@@ -4,26 +4,31 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Text;
-using MainMenuSettings.Extensions;
-using speedrunningutils;
+#if ACCESSOR_INCLUDE_FINDFUNC
 using UnityEngine;
+#endif
 
-namespace tairasoul.unity.common.speedrunning.dsl.internals;
+namespace tairasoul.unity.common.util;
 
 record AccessorCacheKey(Type type, string fieldName);
 
 public static class AccessorUtil {
 	internal static Dictionary<AccessorCacheKey, Func<object, object>> CachedAccessors = [];
+#if ACCESSOR_INCLUDE_FINDFUNC
 	internal static Dictionary<string, GameObject> GameObjectCache = [];
+#endif
 
 	internal static bool RemoveElement(Type type, string fieldName) => CachedAccessors.Remove(new(type, fieldName));
 
 	internal static void ClearCache()
 	{
 		CachedAccessors.Clear();
+#if ACCESSOR_INCLUDE_FINDFUNC
 		GameObjectCache.Clear();
+#endif
 	}
-
+	
+#if ACCESSOR_INCLUDE_FINDFUNC
 	static IEnumerable<string> SplitUnescaped(string text, char separator, char escape = '\\')
 	{
 		var buffer = new StringBuilder();
@@ -60,13 +65,14 @@ public static class AccessorUtil {
 		if (current == null) return null;
 		for (int i = 1; i < split.Count(); i++)
 		{
-			GameObject found = current.Find(split.ElementAt(i));
+			GameObject found = current.transform.Find(split.ElementAt(i)).gameObject;
 			if (found == null) return null;
 			current = found;
 		}
 		GameObjectCache[path] = current;
 		return current;
 	}
+#endif
 
 	public static T Get<T>(object instance, Type type, string fieldName) {
 		AccessorCacheKey key = new(type, fieldName);
