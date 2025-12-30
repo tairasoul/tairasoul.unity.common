@@ -41,10 +41,8 @@ static class EventBus {
 	{
 		if (listeners.TryGetValue(eventId, out var list))
 		{
-			foreach (var listener in list)
-			{
+			foreach (var listener in list.ToList())
 				listener.listener(eventData);
-			}
 		}
 	}
 
@@ -58,16 +56,11 @@ static class EventBus {
 		}
 	}
 
-	unsafe static string Hash(string str)
-	{
-		return $"hash_{Murmur3.Hash128(str)}_";
-	}
-
 	public static async Task<H> WaitFor<T, H>(T eventId, Func<H, bool> predicate)
 		where T : EventID
 		where H : EventData
 	{
-		string listenerId = Hash($"{DateTime.Now}_autoListenerWaitFor");
+		string listenerId = Murmur3.Hash128($"{DateTime.Now}_autoListenerWaitFor");
 		TaskCompletionSource<H> tcs = new();
 		Listen(eventId, listenerId, ed =>
 		{
