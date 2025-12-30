@@ -6,25 +6,26 @@ namespace tairasoul.unity.common.speedrunning.runtime;
 // to not be bound properly and thus cause a VTable error when you attempt to create that class
 class SplitFileProxy {
 	object file;
-	Expression isCompletedExpr;
-	Expression callCurrentSplitExpr;
-	Expression resetExpr;
 	Func<bool> isCompletedAction;
 	Action callCurrentSplitAction;
 	Action resetAction;
+	Action startOnceBoundsAction;
 
 	public SplitFileProxy(object file) {
 		this.file = file;
 		Expression instanceExpr = Expression.Constant(file);
-		isCompletedExpr = Expression.Call(instanceExpr, file.GetType().GetMethod("IsCompleted"));
-		callCurrentSplitExpr = Expression.Call(instanceExpr, file.GetType().GetMethod("CallCurrentSplit"));
-		resetExpr = Expression.Call(instanceExpr, file.GetType().GetMethod("Reset"));
+		Expression isCompletedExpr = Expression.Call(instanceExpr, file.GetType().GetMethod("IsCompleted"));
+		Expression callCurrentSplitExpr = Expression.Call(instanceExpr, file.GetType().GetMethod("CallCurrentSplit"));
+		Expression resetExpr = Expression.Call(instanceExpr, file.GetType().GetMethod("Reset"));
+		Expression startOnceBoundsExpr = Expression.Call(instanceExpr, file.GetType().GetMethod("StartOnceBounds"));
 		isCompletedAction = Expression.Lambda<Func<bool>>(isCompletedExpr).Compile();
 		callCurrentSplitAction = Expression.Lambda<Action>(callCurrentSplitExpr).Compile();
 		resetAction = Expression.Lambda<Action>(resetExpr).Compile();
+		startOnceBoundsAction = Expression.Lambda<Action>(startOnceBoundsExpr).Compile();
 	}
 
 	public bool IsCompleted() => isCompletedAction();
 	public void CallCurrentSplit() => callCurrentSplitAction();
 	public void Reset() => resetAction();
+	public void StartOnceBounds() => startOnceBoundsAction();
 }
