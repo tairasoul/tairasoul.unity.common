@@ -10,19 +10,26 @@ using UnityEngine;
 
 namespace tairasoul.unity.common.util;
 
-record AccessorCacheKey(Type type, string fieldName);
+record AccessorGetCacheKey(Type type, string fieldName);
+// record AccessorSetCacheKey(Type type, string fieldName);
+// record AccessorCallCacheKey(Type type, string methodName, Type[] argTypes);
 
 public static class AccessorUtil {
-	internal static Dictionary<AccessorCacheKey, Func<object, object>> CachedAccessors = [];
+	internal static Dictionary<AccessorGetCacheKey, Func<object, object>> CachedGetAccessors = [];
+	// internal static Dictionary<AccessorSetCacheKey, Func<object, object>> CachedSetAccessors = [];
 #if ACCESSOR_INCLUDE_FINDFUNC
 	internal static Dictionary<string, GameObject> GameObjectCache = [];
 #endif
 
-	internal static bool RemoveElement(Type type, string fieldName) => CachedAccessors.Remove(new(type, fieldName));
+	internal static void RemoveElement(Type type, string fieldName) {
+		CachedGetAccessors.Remove(new(type, fieldName));
+		// CachedSetAccessors.Remove(new(type, fieldName));
+	}
 
 	internal static void ClearCache()
 	{
-		CachedAccessors.Clear();
+		CachedGetAccessors.Clear();
+		// CachedSetAccessors.Clear();
 #if ACCESSOR_INCLUDE_FINDFUNC
 		GameObjectCache.Clear();
 #endif
@@ -74,9 +81,21 @@ public static class AccessorUtil {
 	}
 #endif
 
+	/*public static void Set<T>(object instance, Type type, string fieldName, T value) {
+		AccessorSetCacheKey key = new(type, fieldName);
+		if (CachedSetAccessors.TryGetValue(key, out var accessor)) {
+			accessor(value);
+			return;
+		}
+	}*/
+
+	public static T Get<T, C>(C instance, string fieldName) {
+		return Get<T>(instance, typeof(C), fieldName);
+	}
+
 	public static T Get<T>(object instance, Type type, string fieldName) {
-		AccessorCacheKey key = new(type, fieldName);
-		if (CachedAccessors.TryGetValue(key, out var accessor)) {
+		AccessorGetCacheKey key = new(type, fieldName);
+		if (CachedGetAccessors.TryGetValue(key, out var accessor)) {
 			return (T)accessor(instance);
 		}
 		FieldInfo field = type.GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static);
@@ -85,7 +104,7 @@ public static class AccessorUtil {
 				if (field.IsPublic) {
 					Expression expression = Expression.Field(null, field);
 					Func<object> access = Expression.Lambda<Func<object>>(expression).Compile();
-					CachedAccessors[key] = (_) => access();
+					CachedGetAccessors[key] = (_) => access();
 					return (T)access();
 				}
 				else {
@@ -100,7 +119,7 @@ public static class AccessorUtil {
 					gen.Emit(OpCodes.Box, field.FieldType);
 					gen.Emit(OpCodes.Ret);
 					Func<object> access = (Func<object>)dm.CreateDelegate(typeof(Func<object>));
-					CachedAccessors[key] = (_) => access();
+					CachedGetAccessors[key] = (_) => access();
 					return (T)access();
 				}
 			}
@@ -111,7 +130,7 @@ public static class AccessorUtil {
 					Expression expression = Expression.Field(instanceCast, field);
 					Expression result = Expression.Convert(expression, typeof(object));
 					Func<object, object> access = Expression.Lambda<Func<object, object>>(result, param).Compile();
-					CachedAccessors[key] = access;
+					CachedGetAccessors[key] = access;
 					return (T)access(instance);
 				}
 				else {
@@ -128,7 +147,7 @@ public static class AccessorUtil {
 					gen.Emit(OpCodes.Box, field.FieldType);
 					gen.Emit(OpCodes.Ret);
 					Func<object, object> access = (Func<object, object>)dm.CreateDelegate(typeof(Func<object, object>));
-					CachedAccessors[key] = access;
+					CachedGetAccessors[key] = access;
 					return (T)access(instance);
 				}
 			}
@@ -140,7 +159,7 @@ public static class AccessorUtil {
 					Expression expression = Expression.Call(null, property.GetGetMethod());
 					Expression result = Expression.Convert(expression, typeof(object));
 					Func<object> access = Expression.Lambda<Func<object>>(result).Compile();
-					CachedAccessors[key] = (_) => access();
+					CachedGetAccessors[key] = (_) => access();
 					return (T)access();
 				}
 				else {
@@ -155,7 +174,7 @@ public static class AccessorUtil {
 					gen.Emit(OpCodes.Box, property.PropertyType);
 					gen.Emit(OpCodes.Ret);
 					Func<object> access = (Func<object>)dm.CreateDelegate(typeof(Func<object>));
-					CachedAccessors[key] = (_) => access();
+					CachedGetAccessors[key] = (_) => access();
 					return (T)access();
 				}
 			}
@@ -166,7 +185,7 @@ public static class AccessorUtil {
 					Expression expression = Expression.Call(instanceCast, property.GetGetMethod());
 					Expression result = Expression.Convert(expression, typeof(object));
 					Func<object, object> access = Expression.Lambda<Func<object, object>>(result, param).Compile();
-					CachedAccessors[key] = access;
+					CachedGetAccessors[key] = access;
 					return (T)access(instance);
 				}
 				else {
@@ -183,11 +202,11 @@ public static class AccessorUtil {
 					gen.Emit(OpCodes.Box, property.PropertyType);
 					gen.Emit(OpCodes.Ret);
 					Func<object, object> access = (Func<object, object>)dm.CreateDelegate(typeof(Func<object, object>));
-					CachedAccessors[key] = access;
+					CachedGetAccessors[key] = access;
 					return (T)access(instance);
 				}
 			}
 		}
-		throw new Exception();
+		throw new Exception($"{fieldName} is not a field or property on {type}");
 	}
 }
