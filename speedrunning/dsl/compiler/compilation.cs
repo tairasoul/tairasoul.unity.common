@@ -134,13 +134,10 @@ class CompilationVisitor : IVisitor {
 			rg.Emit(OpCodes.Ldc_I4_0);
 			rg.Emit(OpCodes.Stfld, fieldInit);
 		}
-		LocalBuilder boundLocal = rg.DeclareLocal(typeof(Bounds));
 		foreach (var bound in boundResets) {
-			LoadLocalA(rg, boundLocal);
-			rg.Emit(OpCodes.Initobj, typeof(Bounds));
 			rg.Emit(OpCodes.Ldarg_0);
-			LoadLocal(rg, boundLocal);
-			rg.Emit(OpCodes.Stfld, bound);
+			rg.Emit(OpCodes.Ldflda, bound);
+			rg.Emit(OpCodes.Initobj, typeof(Bounds));
 		}
 		foreach (var boundMethod in boundResetMethods) {
 			rg.Emit(OpCodes.Ldarg_0);
@@ -736,11 +733,8 @@ class CompilationVisitor : IVisitor {
 			os.Emit(OpCodes.Ldc_I4_1);
 			os.Emit(OpCodes.Stfld, listenStarted);
 			os.Emit(OpCodes.Ldarg_0);
-			LocalBuilder boundLocal = os.DeclareLocal(typeof(Bounds));
-			LoadLocalA(os, boundLocal);
+			os.Emit(OpCodes.Ldflda, boundField);
 			os.Emit(OpCodes.Initobj, typeof(Bounds));
-			LoadLocal(os, boundLocal);
-			os.Emit(OpCodes.Stfld, boundField);
 			os.Emit(OpCodes.Ldarg_0);
 			os.Emit(OpCodes.Ldflda, boundField);
 			os.Emit(OpCodes.Ldc_R4, Math.Min(grouped.start.x, grouped.end.x));
@@ -842,11 +836,8 @@ class CompilationVisitor : IVisitor {
 			currentGenerator.Emit(OpCodes.Ldc_I4_1);
 			currentGenerator.Emit(OpCodes.Stfld, listening);
 			currentGenerator.Emit(OpCodes.Ldarg_0);
-			LocalBuilder boundLocal = currentGenerator.DeclareLocal(typeof(Bounds));
-			LoadLocalA(currentGenerator, boundLocal);
+			currentGenerator.Emit(OpCodes.Ldflda, boundField);
 			currentGenerator.Emit(OpCodes.Initobj, typeof(Bounds));
-			LoadLocal(currentGenerator, boundLocal);
-			currentGenerator.Emit(OpCodes.Stfld, boundField);
 			currentGenerator.Emit(OpCodes.Ldarg_0);
 			currentGenerator.Emit(OpCodes.Ldflda, boundField);
 			currentGenerator.Emit(OpCodes.Ldc_R4, Math.Min(grouped.start.x, grouped.end.x));
@@ -979,11 +970,8 @@ class CompilationVisitor : IVisitor {
 			os.Emit(OpCodes.Ldc_I4_1);
 			os.Emit(OpCodes.Stfld, listenStarted);
 			os.Emit(OpCodes.Ldarg_0);
-			LocalBuilder boundLocal = os.DeclareLocal(typeof(Bounds));
-			LoadLocalA(os, boundLocal);
+			os.Emit(OpCodes.Ldflda, boundField);
 			os.Emit(OpCodes.Initobj, typeof(Bounds));
-			LoadLocal(os, boundLocal);
-			os.Emit(OpCodes.Stfld, boundField);
 			os.Emit(OpCodes.Ldarg_0);
 			os.Emit(OpCodes.Ldfld, boundField);
 			os.Emit(OpCodes.Ldstr, RemovePathDelimiters(grouped.objectPath));
@@ -1082,11 +1070,8 @@ class CompilationVisitor : IVisitor {
 			currentGenerator.Emit(OpCodes.Ldc_I4_1);
 			currentGenerator.Emit(OpCodes.Stfld, listening);
 			currentGenerator.Emit(OpCodes.Ldarg_0);
-			LocalBuilder boundLocal = currentGenerator.DeclareLocal(typeof(Bounds));
-			LoadLocalA(currentGenerator, boundLocal);
+			currentGenerator.Emit(OpCodes.Ldflda, boundField);
 			currentGenerator.Emit(OpCodes.Initobj, typeof(Bounds));
-			LoadLocal(currentGenerator, boundLocal);
-			currentGenerator.Emit(OpCodes.Stfld, boundField);
 			currentGenerator.Emit(OpCodes.Ldarg_0);
 			currentGenerator.Emit(OpCodes.Ldfld, boundField);
 			currentGenerator.Emit(OpCodes.Ldstr, RemovePathDelimiters(grouped.objectPath));
@@ -1189,11 +1174,8 @@ class CompilationVisitor : IVisitor {
 			os.Emit(OpCodes.Ldc_I4_1);
 			os.Emit(OpCodes.Stfld, listenStarted);
 			os.Emit(OpCodes.Ldarg_0);
-			LocalBuilder boundLocal = os.DeclareLocal(typeof(Bounds));
-			LoadLocalA(os, boundLocal);
+			os.Emit(OpCodes.Ldflda, boundField);
 			os.Emit(OpCodes.Initobj, typeof(Bounds));
-			LoadLocal(os, boundLocal);
-			os.Emit(OpCodes.Stfld, boundField);
 			os.Emit(OpCodes.Ldarg_0);
 			os.Emit(OpCodes.Ldfld, boundField);
 			os.Emit(OpCodes.Ldstr, RemovePathDelimiters(grouped.objectPath));
@@ -1290,11 +1272,8 @@ class CompilationVisitor : IVisitor {
 			llist.Emit(OpCodes.Ret);
 			Label l = currentGenerator.DefineLabel();
 			currentGenerator.Emit(OpCodes.Ldarg_0);
-			LocalBuilder boundLocal = currentGenerator.DeclareLocal(typeof(Bounds));
-			LoadLocalA(currentGenerator, boundLocal);
+			currentGenerator.Emit(OpCodes.Ldflda, boundField);
 			currentGenerator.Emit(OpCodes.Initobj, typeof(Bounds));
-			LoadLocal(currentGenerator, boundLocal);
-			currentGenerator.Emit(OpCodes.Stfld, boundField);
 			currentGenerator.Emit(OpCodes.Ldarg_0);
 			currentGenerator.Emit(OpCodes.Ldfld, boundField);
 			currentGenerator.Emit(OpCodes.Ldstr, RemovePathDelimiters(grouped.objectPath));
@@ -1551,9 +1530,11 @@ class CompilationVisitor : IVisitor {
 			{
 				memberType = ((PropertyInfo)member).PropertyType;
 			}
-			prevType = memberType;
+			gen.Emit(OpCodes.Ldtoken, prevType);
+			gen.Emit(OpCodes.Call, typeof(Type).GetMethod("GetTypeFromHandle"));
 			gen.Emit(OpCodes.Ldstr, access);
 			gen.Emit(OpCodes.Call, AccessorUtilGet.MakeGenericMethod(memberType));
+			prevType = memberType;
 		}
 		return memberType;
 	}

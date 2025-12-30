@@ -68,8 +68,7 @@ public static class AccessorUtil {
 		return current;
 	}
 
-	public static T Get<T>(object instance, string fieldName) {
-		Type type = instance.GetType();
+	public static T Get<T>(object instance, Type type, string fieldName) {
 		AccessorCacheKey key = new(type, fieldName);
 		if (CachedAccessors.TryGetValue(key, out var accessor)) {
 			return (T)accessor(instance);
