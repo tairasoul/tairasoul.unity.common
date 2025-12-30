@@ -48,7 +48,7 @@ they follow the structure of
 ```
 defsplit splitname
 	any | all
-		condition
+		conditions
 	do
 		logic
 ```
