@@ -1530,11 +1530,13 @@ class CompilationVisitor : IVisitor {
 		}
 	}
 
+	record AccessorData(Type type, string access, MethodInfo call);
+
 	Type? EmitAccessor(ILGenerator gen, Type type, int idx, string fieldName) {
 		string[] accesses = fieldName.Trim('.').Split('.');
 		Type prevType = type;
 		Type? memberType = null;
-		LoadLocal(gen, idx);
+		List<AccessorData> emits = [];
 		foreach (var access in accesses)
 		{
 			var member = prevType.GetMember(access, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance).Where((v) => v is not MethodInfo).FirstOrDefault();
@@ -1547,11 +1549,15 @@ class CompilationVisitor : IVisitor {
 			{
 				memberType = ((PropertyInfo)member).PropertyType;
 			}
-			gen.Emit(OpCodes.Ldtoken, prevType);
-			gen.Emit(OpCodes.Call, typeof(Type).GetMethod("GetTypeFromHandle"));
-			gen.Emit(OpCodes.Ldstr, access);
-			gen.Emit(OpCodes.Call, AccessorUtilGet.MakeGenericMethod(memberType));
+			emits.Add(new(prevType, access, AccessorUtilGet.MakeGenericMethod(memberType)));
 			prevType = memberType;
+		}
+		LoadLocal(gen, idx);
+		foreach (var emit in emits) {
+			gen.Emit(OpCodes.Ldtoken, emit.type);
+			gen.Emit(OpCodes.Call, typeof(Type).GetMethod("GetTypeFromHandle"));
+			gen.Emit(OpCodes.Ldstr, emit.access);
+			gen.Emit(OpCodes.Call, emit.call);
 		}
 		return memberType;
 	}
