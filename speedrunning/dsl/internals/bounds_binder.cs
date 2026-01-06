@@ -36,12 +36,12 @@ public static unsafe class BoundsBinder {
 	internal static void CheckUpdates() {
 		for (int i = 0; i < fullBounds.Count; i++) {
 			var b = fullBounds[i];
-			(*b.bounds).center = b.gameObject.transform.position;
-			(*b.bounds).size = b.gameObject.transform.lossyScale;
+			b.bounds->center = b.gameObject.transform.position;
+			b.bounds->size = b.gameObject.transform.lossyScale;
 		}
 		for (int i = 0; i < partialBounds.Count; i++) {
 			var b = fullBounds[i];
-			(*b.bounds).center = b.gameObject.transform.position;
+			b.bounds->center = b.gameObject.transform.position;
 		}
 	}
 
