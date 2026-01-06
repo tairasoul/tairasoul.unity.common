@@ -203,6 +203,21 @@ class CompilationVisitor : IVisitor {
 		currentGenerator = previousGenerator;
 		Label splitNotCompleted = currentGenerator.DefineLabel();
 		Label RunLogic = currentGenerator.DefineLabel();
+		FieldBuilder condsCalled = currentClass.DefineField($"{previousMethod.Name}_condsCalled", typeof(bool), FieldAttributes.Private);
+		falseInits.Add(condsCalled);
+		Label condsAreCalled = currentGenerator.DefineLabel();
+		currentGenerator.Emit(OpCodes.Ldarg_0);
+		currentGenerator.Emit(OpCodes.Ldfld, condsCalled);
+		currentGenerator.Emit(OpCodes.Brtrue, condsAreCalled);
+		currentGenerator.Emit(OpCodes.Ldarg_0);
+		currentGenerator.Emit(OpCodes.Ldc_I4_1);
+		currentGenerator.Emit(OpCodes.Stfld, condsCalled);
+		for (int i = 0; i < any.conditions.Count(); i++) {
+			currentGenerator.Emit(OpCodes.Ldarg_0);
+			currentGenerator.Emit(OpCodes.Call, ConditionMethods[i]);
+			currentGenerator.Emit(OpCodes.Pop);
+		}
+		currentGenerator.MarkLabel(condsAreCalled);
 		for (int i = 0; i < any.conditions.Count(); i++)
 		{
 			currentGenerator.Emit(OpCodes.Ldarg_0);
@@ -240,6 +255,21 @@ class CompilationVisitor : IVisitor {
 		currentMethod = previousMethod;
 		currentGenerator = previousGenerator;
 		Label splitNotCompleted = currentGenerator.DefineLabel();
+		FieldBuilder condsCalled = currentClass.DefineField($"{previousMethod.Name}_condsCalled", typeof(bool), FieldAttributes.Private);
+		falseInits.Add(condsCalled);
+		Label condsAreCalled = currentGenerator.DefineLabel();
+		currentGenerator.Emit(OpCodes.Ldarg_0);
+		currentGenerator.Emit(OpCodes.Ldfld, condsCalled);
+		currentGenerator.Emit(OpCodes.Brtrue, condsAreCalled);
+		currentGenerator.Emit(OpCodes.Ldarg_0);
+		currentGenerator.Emit(OpCodes.Ldc_I4_1);
+		currentGenerator.Emit(OpCodes.Stfld, condsCalled);
+		for (int i = 0; i < all.conditions.Count(); i++) {
+			currentGenerator.Emit(OpCodes.Ldarg_0);
+			currentGenerator.Emit(OpCodes.Call, ConditionMethods[i]);
+			currentGenerator.Emit(OpCodes.Pop);
+		}
+		currentGenerator.MarkLabel(condsAreCalled);
 		for (int i = 0; i < all.conditions.Count(); i++)
 		{
 			currentGenerator.Emit(OpCodes.Ldarg_0);
