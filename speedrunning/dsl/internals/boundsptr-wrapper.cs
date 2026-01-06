@@ -24,6 +24,11 @@ public unsafe class BoundsPtrWrapper(Bounds* ptr)
 		return lh.ptr != rh.ptr;
 	}
 
+	public override int GetHashCode()
+	{
+		return (*ptr).GetHashCode();
+	}
+
 	public override bool Equals(object o) {
 		if (o is BoundsPtrWrapper ptr)
 			return ptr == this;

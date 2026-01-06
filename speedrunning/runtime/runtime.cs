@@ -107,7 +107,7 @@ public static class RuntimeInterface {
 		Assembly assembly = compiler.Compile(file);
 		current = assembly;
 		Type sfType = assembly.GetType("SplitFile");
-		object sfInst = Activator.CreateInstance(sfType, dslOp, DslCompilationConfig.BoundsRegistryClass);;
+		object sfInst = Activator.CreateInstance(sfType, dslOp, DslCompilationConfig.BoundsRegistryClass);
 		behaviour.activeFile = new(sfInst);
 	}
 

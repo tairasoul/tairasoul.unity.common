@@ -87,13 +87,13 @@ RUNIMMEDIATE
 	: 'runimmediate'
 	;
 
-// AND
-	// : 'and'
-	// ;
-
-OR
-	: 'or'
+AND
+	: 'and'
 	;
+
+// OR
+// 	: 'or'
+// 	;
 
 FULFILLED
 	: 'fulfilled'

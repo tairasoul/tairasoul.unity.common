@@ -134,7 +134,7 @@ comparison_l
 	;
 
 comparison_andor
-	: <andor> andor=OR comparison_l
+	: <andor> andor=AND comparison_l
 	;
 
 comparison

@@ -192,7 +192,7 @@ else
 end
 ```
 
-you can only join comparisons with `or`, `and` is not yet supported
+you can only join comparisons with `and`, `or` is not yet supported
 
 supported comparisons are `>=`, `>`, `==`, `<=` and `<`
 
