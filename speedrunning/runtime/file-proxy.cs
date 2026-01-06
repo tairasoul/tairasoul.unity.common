@@ -9,7 +9,7 @@ class SplitFileProxy {
 	Func<bool> isCompletedAction;
 	Action callCurrentSplitAction;
 	Action resetAction;
-	Action startOnceBoundsAction;
+	Action startListenersAction;
 
 	public SplitFileProxy(object file) {
 		this.file = file;
@@ -17,15 +17,15 @@ class SplitFileProxy {
 		Expression isCompletedExpr = Expression.Call(instanceExpr, file.GetType().GetMethod("IsCompleted"));
 		Expression callCurrentSplitExpr = Expression.Call(instanceExpr, file.GetType().GetMethod("CallCurrentSplit"));
 		Expression resetExpr = Expression.Call(instanceExpr, file.GetType().GetMethod("Reset"));
-		Expression startOnceBoundsExpr = Expression.Call(instanceExpr, file.GetType().GetMethod("StartOnceBounds"));
+		Expression startListenersExpr = Expression.Call(instanceExpr, file.GetType().GetMethod("StartListeners"));
 		isCompletedAction = Expression.Lambda<Func<bool>>(isCompletedExpr).Compile();
 		callCurrentSplitAction = Expression.Lambda<Action>(callCurrentSplitExpr).Compile();
 		resetAction = Expression.Lambda<Action>(resetExpr).Compile();
-		startOnceBoundsAction = Expression.Lambda<Action>(startOnceBoundsExpr).Compile();
+		startListenersAction = Expression.Lambda<Action>(startListenersExpr).Compile();
 	}
 
 	public bool IsCompleted() => isCompletedAction();
 	public void CallCurrentSplit() => callCurrentSplitAction();
 	public void Reset() => resetAction();
-	public void StartOnceBounds() => startOnceBoundsAction();
+	public void StartListeners() => startListenersAction();
 }

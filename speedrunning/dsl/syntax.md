@@ -107,15 +107,17 @@ this bound will have it's center set to the object's position, and the size set 
 
 ### Event listen
 
-
 optional logic
+
 the event listen condition is triggered when a specific event is sent over the event bus.
 
 the first variant is as follows
 
-`on EventName [x, y, z]`
+`on EventName [x, y, z] <anypoint>`
 
 `[x, y, z]` is the flat array passed to the event as defined by the runtime.
+
+anypoint is optional, and including it means this event will start listening the moment the run starts instead of only when the split is reached.
 
 #### Event listen shorthand
 
@@ -123,12 +125,14 @@ optional logic
 
 there's also a shorthand for event listening, which will be considered fulfilled if the event is ever sent once this split is active.
 
-`on EventName`
+`on EventName <anypoint>`
+
+anypoint is optional, and including it means this event will start listening the moment the run starts instead of only when the split is reached.
 
 this would be the same as writing
 
 ```
-on EventName
+on EventName <anypoint>
 	fulfilled
 ```
 

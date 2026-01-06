@@ -106,7 +106,7 @@ call_node
 	;
 
 call_shorthand
-	: IDENTIFIER ('[' call_args+=call_arg (',' call_args+=call_arg)* ']')?
+	: IDENTIFIER ('[' call_args+=call_arg (',' call_args+=call_arg)* ']')
 	;
 
 comparison_binaryrh_node
@@ -169,11 +169,11 @@ timer_node
 	;
 
 event_listen_group
-	: <event_name> ON event_name=IDENTIFIER
+	: <event_name> ON event_name=IDENTIFIER ANYPOINT?
 	;
 
 event_listen
-	: <event_name> ON event_name=IDENTIFIER ('[' args+=IDENTIFIER (',' args+=IDENTIFIER)* ']')?
+	: <event_name> ON event_name=IDENTIFIER ('[' args+=IDENTIFIER (',' args+=IDENTIFIER)* ']') ANYPOINT?
 	;
 
 bounds_grouped

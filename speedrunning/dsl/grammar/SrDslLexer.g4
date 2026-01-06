@@ -103,6 +103,10 @@ DO
 	: 'do'
 	;
 
+ANYPOINT
+	:	'anypoint'
+	;
+
 QUOTE
 	: '"'
 	;

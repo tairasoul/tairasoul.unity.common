@@ -117,7 +117,7 @@ public static class RuntimeInterface {
 	public static void GameStarted() {
 		if (behaviour.activeFile == null) return;
 		Reset();
-		behaviour.activeFile.StartOnceBounds();
+		behaviour.activeFile.StartListeners();
 		behaviour.IsActive = true;
 	}
 

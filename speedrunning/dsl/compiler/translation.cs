@@ -65,8 +65,8 @@ record TranslationMethodCall(string name, IEnumerable<TranslationResult> args) :
 record TranslationBoundsGrouped(Coordinate start, Coordinate end, GroupedBoundType grouped) : TranslationResult;
 record TranslationBoundsObjectGrouped(string objectPath, GroupedBoundType grouped) : TranslationResult;
 record TranslationBoundsObjectSizeGrouped(string objectPath, Coordinate size, GroupedBoundType grouped) : TranslationResult;
-record TranslationEventListenGrouped(string ev) : TranslationResult;
-record TranslationEventListen(string ev, IEnumerable<TranslationVariableDecl> args) : TranslationResult;
+record TranslationEventListenGrouped(string ev, bool anypoint) : TranslationResult;
+record TranslationEventListen(string ev, IEnumerable<TranslationVariableDecl> args, bool anypoint) : TranslationResult;
 record TranslationFulfilled() : TranslationResult;
 record TranslationFullConditionNode(TranslationResult condition, IEnumerable<TranslationResult> body) : TranslationResult;
 record TranslationObjectCondition(string path, IEnumerable<TranslationVariableDecl> args) : TranslationResult;
@@ -375,12 +375,12 @@ class TranslationVisitor : AbstractParseTreeVisitor<TranslationResult>, ISrDslPa
 
 	public TranslationResult VisitEvent_listen([NotNull] SrDslParser.Event_listenContext context)
 	{
-		return new TranslationEventListen(context.event_name.Text, context._args.Select((v) => new TranslationVariableDecl(v.Text, v.Text)));
+		return new TranslationEventListen(context.event_name.Text, context._args.Select((v) => new TranslationVariableDecl(v.Text, v.Text)), context.ANYPOINT() != null);
 	}
 
 	public TranslationResult VisitEvent_listen_group([NotNull] SrDslParser.Event_listen_groupContext context)
 	{
-		return new TranslationEventListenGrouped(context.event_name.Text);
+		return new TranslationEventListenGrouped(context.event_name.Text, context.ANYPOINT() != null);
 	}
 
 	public TranslationResult VisitGcn_nonopt([NotNull] SrDslParser.Gcn_nonoptContext context)

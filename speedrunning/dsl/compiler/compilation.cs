@@ -48,9 +48,8 @@ class CompilationVisitor : IVisitor {
 	Dictionary<string, MethodBuilder> methods = [];
 	Dictionary<string, LocalBuilder> locals = [];
 	List<MethodBuilder> activeInactiveBounds = [];
-	List<MethodBuilder> boundResetMethods = [];
-	List<MethodBuilder> boundOnceMethods = [];
-	List<MethodBuilder> boundOnceResetMethods = [];
+	List<MethodBuilder> resetMethods = [];
+	List<MethodBuilder> listenMethods = [];
 	List<FieldBuilder> falseInits = [];
 	List<FieldBuilder> boundResets = [];
 	Dictionary<string, Type> variableTypes = [];
@@ -119,9 +118,9 @@ class CompilationVisitor : IVisitor {
 			gen.Emit(OpCodes.Stfld, fieldInit);
 		}
 		gen.Emit(OpCodes.Ret);
-		MethodBuilder startOnceListeners = currentClass.DefineMethod("StartOnceBounds", MethodAttributes.Public, CallingConventions.HasThis, typeof(void), []);
-		ILGenerator il = startOnceListeners.GetILGenerator();
-		foreach (var bound in boundOnceMethods) {
+		MethodBuilder startListeners = currentClass.DefineMethod("StartListeners", MethodAttributes.Public, CallingConventions.HasThis, typeof(void), []);
+		ILGenerator il = startListeners.GetILGenerator();
+		foreach (var bound in listenMethods) {
 			il.Emit(OpCodes.Ldarg_0);
 			il.Emit(OpCodes.Call, bound);
 		}
@@ -141,11 +140,7 @@ class CompilationVisitor : IVisitor {
 			rg.Emit(OpCodes.Ldflda, bound);
 			rg.Emit(OpCodes.Initobj, typeof(Bounds));
 		}
-		foreach (var boundMethod in boundResetMethods) {
-			rg.Emit(OpCodes.Ldarg_0);
-			rg.Emit(OpCodes.Call, boundMethod);
-		}
-		foreach (var boundMethod in boundOnceResetMethods) {
+		foreach (var boundMethod in resetMethods) {
 			rg.Emit(OpCodes.Ldarg_0);
 			rg.Emit(OpCodes.Call, boundMethod);
 		}
@@ -711,7 +706,7 @@ class CompilationVisitor : IVisitor {
 			falseInits.Add(everVisited);
 			MethodBuilder listener = currentClass.DefineMethod($"boundEverVisited_{b}listener", MethodAttributes.Private, typeof(void), [typeof(EventData)]);
 			MethodBuilder stopListening = currentClass.DefineMethod($"boundEverVisited_{b}stopListening", MethodAttributes.Private, typeof(void), []);
-			boundOnceResetMethods.Add(stopListening);
+			resetMethods.Add(stopListening);
 			ILGenerator sl = stopListening.GetILGenerator();
 			Label notListening = sl.DefineLabel();
 			sl.Emit(OpCodes.Ldarg_0);
@@ -761,7 +756,7 @@ class CompilationVisitor : IVisitor {
 			gen.MarkLabel(label);
 			gen.Emit(OpCodes.Ret);
 			MethodBuilder onceStart = currentClass.DefineMethod($"boundEverVisited_{b}startListening", MethodAttributes.Private, typeof(void), []);
-			boundOnceMethods.Add(onceStart);
+			listenMethods.Add(onceStart);
 			ILGenerator os = onceStart.GetILGenerator();
 			os.Emit(OpCodes.Ldarg_0);
 			os.Emit(OpCodes.Ldc_I4_1);
@@ -808,7 +803,7 @@ class CompilationVisitor : IVisitor {
 			falseInits.Add(listening);
 			MethodBuilder stopListening = currentClass.DefineMethod($"bound_{b}stopListening", MethodAttributes.Private, typeof(void), []);
 			activeInactiveBounds.Add(stopListening);
-			boundResetMethods.Add(stopListening);
+			resetMethods.Add(stopListening);
 			MethodBuilder enterlistener = currentClass.DefineMethod($"bound_{b}enterlistener", MethodAttributes.Private, typeof(void), [typeof(EventData)]);
 			MethodBuilder leavelistener = currentClass.DefineMethod($"bound_{b}leavelistener", MethodAttributes.Private, typeof(void), [typeof(EventData)]);
 			ILGenerator sl = stopListening.GetILGenerator();
@@ -949,7 +944,7 @@ class CompilationVisitor : IVisitor {
 			falseInits.Add(listenStarted);
 			falseInits.Add(everVisited);
 			MethodBuilder stopListening = currentClass.DefineMethod($"boundEverVisited_{b}stopListening", MethodAttributes.Private, typeof(void), []);
-			boundOnceResetMethods.Add(stopListening);
+			resetMethods.Add(stopListening);
 			ILGenerator sl = stopListening.GetILGenerator();
 			Label notListening = sl.DefineLabel();
 			sl.Emit(OpCodes.Ldarg_0);
@@ -1003,7 +998,7 @@ class CompilationVisitor : IVisitor {
 			gen.MarkLabel(label);
 			gen.Emit(OpCodes.Ret);
 			MethodBuilder onceStart = currentClass.DefineMethod($"boundEverVisited_{b}startListening", MethodAttributes.Private, typeof(void), []);
-			boundOnceMethods.Add(onceStart);
+			listenMethods.Add(onceStart);
 			ILGenerator os = onceStart.GetILGenerator();
 			os.Emit(OpCodes.Ldarg_0);
 			os.Emit(OpCodes.Ldc_I4_1);
@@ -1044,7 +1039,7 @@ class CompilationVisitor : IVisitor {
 			falseInits.Add(listening);
 			MethodBuilder stopListening = currentClass.DefineMethod($"bound_{b}stopListening", MethodAttributes.Private, typeof(void), []);
 			activeInactiveBounds.Add(stopListening);
-			boundResetMethods.Add(stopListening);
+			resetMethods.Add(stopListening);
 			MethodBuilder enterlistener = currentClass.DefineMethod($"bound_{b}enterlistener", MethodAttributes.Private, typeof(void), [typeof(EventData)]);
 			MethodBuilder leavelistener = currentClass.DefineMethod($"bound_{b}leavelistener", MethodAttributes.Private, typeof(void), [typeof(EventData)]);
 			ILGenerator sl = stopListening.GetILGenerator();
@@ -1158,7 +1153,7 @@ class CompilationVisitor : IVisitor {
 			falseInits.Add(listenStarted);
 			falseInits.Add(everVisited);
 			MethodBuilder stopListening = currentClass.DefineMethod($"boundEverVisited_{b}stopListening", MethodAttributes.Private, typeof(void), []);
-			boundOnceResetMethods.Add(stopListening);
+			resetMethods.Add(stopListening);
 			ILGenerator sl = stopListening.GetILGenerator();
 			Label notListening = sl.DefineLabel();
 			sl.Emit(OpCodes.Ldarg_0);
@@ -1212,7 +1207,7 @@ class CompilationVisitor : IVisitor {
 			gen.MarkLabel(label);
 			gen.Emit(OpCodes.Ret);
 			MethodBuilder onceStart = currentClass.DefineMethod($"boundEverVisited_{b}startListening", MethodAttributes.Private, typeof(void), []);
-			boundOnceMethods.Add(onceStart);
+			listenMethods.Add(onceStart);
 			ILGenerator os = onceStart.GetILGenerator();
 			os.Emit(OpCodes.Ldarg_0);
 			os.Emit(OpCodes.Ldc_I4_1);
@@ -1257,7 +1252,7 @@ class CompilationVisitor : IVisitor {
 			falseInits.Add(listening);
 			MethodBuilder stopListening = currentClass.DefineMethod($"bound_{b}stopListening", MethodAttributes.Private, typeof(void), []);
 			activeInactiveBounds.Add(stopListening);
-			boundResetMethods.Add(stopListening);
+			resetMethods.Add(stopListening);
 			MethodBuilder enterlistener = currentClass.DefineMethod($"bound_{b}enterlistener", MethodAttributes.Private, typeof(void), [typeof(EventData)]);
 			MethodBuilder leavelistener = currentClass.DefineMethod($"bound_{b}leavelistener", MethodAttributes.Private, typeof(void), [typeof(EventData)]);
 			ILGenerator sl = stopListening.GetILGenerator();
@@ -1377,16 +1372,6 @@ class CompilationVisitor : IVisitor {
 		FieldBuilder fulfilled = currentClass.DefineField($"event_fulfilled{ev}", typeof(bool), FieldAttributes.Private);
 		falseInits.Add(listenStarted);
 		falseInits.Add(fulfilled);
-		Label l = currentGenerator.DefineLabel();
-		currentGenerator.Emit(OpCodes.Ldarg_0);
-		currentGenerator.Emit(OpCodes.Ldfld, listenStarted);
-		currentGenerator.Emit(OpCodes.Brtrue, l);
-		currentGenerator.Emit(OpCodes.Ldarg_0);
-		currentGenerator.Emit(OpCodes.Ldc_I4_0);
-		currentGenerator.Emit(OpCodes.Stfld, fulfilled);
-		currentGenerator.Emit(OpCodes.Ldarg_0);
-		currentGenerator.Emit(OpCodes.Ldc_I4_1);
-		currentGenerator.Emit(OpCodes.Stfld, listenStarted);
 		MethodBuilder listenMethod = currentClass.DefineMethod($"event_listen{ev}", MethodAttributes.Private, typeof(void), [typeof(EventData)]);
 		ILGenerator gen = listenMethod.GetILGenerator();
 		LocalBuilder evdLoc = gen.DeclareLocal(typeof(object[]));
@@ -1408,15 +1393,29 @@ class CompilationVisitor : IVisitor {
 		ILGenerator _b = currentGenerator;
 		currentGenerator = gen;
 		RedirectFulfilled = true;
+		MethodBuilder stopListening = currentClass.DefineMethod($"event_stoplisten{ev}", MethodAttributes.Private, typeof(void), []);
+		ILGenerator g = stopListening.GetILGenerator();
+		g.Emit(OpCodes.Ldarg_0);
+		g.Emit(OpCodes.Ldfld, listenStarted);
+		Label listening = g.DefineLabel();
+		g.Emit(OpCodes.Brfalse_S, listening);
+		g.Emit(OpCodes.Ldarg_0);
+		g.Emit(OpCodes.Ldc_I4_0);
+		g.Emit(OpCodes.Stfld, listenStarted);
+		g.Emit(OpCodes.Ldstr, eventListen.ev);
+		g.Emit(OpCodes.Newobj, DslIdType.GetConstructor([typeof(string)]));
+		g.Emit(OpCodes.Ldstr, $"event_listen{ev}");
+		g.Emit(OpCodes.Call, EventBusStop.MakeGenericMethod(DslIdType));
+		g.MarkLabel(listening);
+		g.Emit(OpCodes.Ret);
+		resetMethods.Add(stopListening);
 		FulfilledRedirect = () =>
 		{
 			gen.Emit(OpCodes.Ldarg_0);
 			gen.Emit(OpCodes.Ldc_I4_1);
 			gen.Emit(OpCodes.Stfld, fulfilled);
-			gen.Emit(OpCodes.Ldstr, eventListen.ev);
-			gen.Emit(OpCodes.Newobj, DslIdType.GetConstructor([typeof(string)]));
-			gen.Emit(OpCodes.Ldstr, $"event_listen{ev}");
-			gen.Emit(OpCodes.Call, EventBusStop.MakeGenericMethod(DslIdType));
+			gen.Emit(OpCodes.Ldarg_0);
+			gen.Emit(OpCodes.Call, stopListening);
 		};
 		foreach (var b_node in body) {
 			VisitLogicNode(b_node);
@@ -1424,17 +1423,60 @@ class CompilationVisitor : IVisitor {
 		RedirectFulfilled = false;
 		gen.Emit(OpCodes.Ret);
 		currentGenerator = _b;
-		currentGenerator.Emit(OpCodes.Ldstr, eventListen.ev);
-		currentGenerator.Emit(OpCodes.Newobj, DslIdType.GetConstructor([typeof(string)]));
-		currentGenerator.Emit(OpCodes.Ldstr, $"event_listen{ev}");
-		currentGenerator.Emit(OpCodes.Ldarg_0);
-		currentGenerator.Emit(OpCodes.Ldarg_0);
-		currentGenerator.Emit(OpCodes.Ldvirtftn, listenMethod);
-		currentGenerator.Emit(OpCodes.Newobj, typeof(Action<EventData>).GetConstructors().First());
-		currentGenerator.Emit(OpCodes.Call, EventBusListen.MakeGenericMethod(DslIdType));
-		currentGenerator.MarkLabel(l);
-		currentGenerator.Emit(OpCodes.Ldarg_0);
-		currentGenerator.Emit(OpCodes.Ldfld, fulfilled);
+		if (!eventListen.anypoint)
+		{
+			Label l = currentGenerator.DefineLabel();
+			currentGenerator.Emit(OpCodes.Ldarg_0);
+			currentGenerator.Emit(OpCodes.Ldfld, listenStarted);
+			currentGenerator.Emit(OpCodes.Brtrue, l);
+			currentGenerator.Emit(OpCodes.Ldarg_0);
+			currentGenerator.Emit(OpCodes.Ldfld, fulfilled);
+			currentGenerator.Emit(OpCodes.Brtrue, l);
+			currentGenerator.Emit(OpCodes.Ldarg_0);
+			currentGenerator.Emit(OpCodes.Ldc_I4_0);
+			currentGenerator.Emit(OpCodes.Stfld, fulfilled);
+			currentGenerator.Emit(OpCodes.Ldarg_0);
+			currentGenerator.Emit(OpCodes.Ldc_I4_1);
+			currentGenerator.Emit(OpCodes.Stfld, listenStarted);
+			currentGenerator.Emit(OpCodes.Ldstr, eventListen.ev);
+			currentGenerator.Emit(OpCodes.Newobj, DslIdType.GetConstructor([typeof(string)]));
+			currentGenerator.Emit(OpCodes.Ldstr, $"event_listen{ev}");
+			currentGenerator.Emit(OpCodes.Ldarg_0);
+			currentGenerator.Emit(OpCodes.Ldarg_0);
+			currentGenerator.Emit(OpCodes.Ldvirtftn, listenMethod);
+			currentGenerator.Emit(OpCodes.Newobj, typeof(Action<EventData>).GetConstructors().First());
+			currentGenerator.Emit(OpCodes.Call, EventBusListen.MakeGenericMethod(DslIdType));
+			currentGenerator.MarkLabel(l);
+			currentGenerator.Emit(OpCodes.Ldarg_0);
+			currentGenerator.Emit(OpCodes.Ldfld, fulfilled);
+		}
+		else {
+			MethodBuilder startListen = currentClass.DefineMethod($"event_startlisten{ev}", MethodAttributes.Private, typeof(void), []);
+			ILGenerator il = startListen.GetILGenerator();
+			Label l = il.DefineLabel();
+			il.Emit(OpCodes.Ldarg_0);
+			il.Emit(OpCodes.Ldfld, listenStarted);
+			il.Emit(OpCodes.Brtrue, l);
+			il.Emit(OpCodes.Ldarg_0);
+			il.Emit(OpCodes.Ldc_I4_0);
+			il.Emit(OpCodes.Stfld, fulfilled);
+			il.Emit(OpCodes.Ldarg_0);
+			il.Emit(OpCodes.Ldc_I4_1);
+			il.Emit(OpCodes.Stfld, listenStarted);
+			il.Emit(OpCodes.Ldstr, eventListen.ev);
+			il.Emit(OpCodes.Newobj, DslIdType.GetConstructor([typeof(string)]));
+			il.Emit(OpCodes.Ldstr, $"event_listen{ev}");
+			il.Emit(OpCodes.Ldarg_0);
+			il.Emit(OpCodes.Ldarg_0);
+			il.Emit(OpCodes.Ldvirtftn, listenMethod);
+			il.Emit(OpCodes.Newobj, typeof(Action<EventData>).GetConstructors().First());
+			il.Emit(OpCodes.Call, EventBusListen.MakeGenericMethod(DslIdType));
+			il.MarkLabel(l);
+			il.Emit(OpCodes.Ret);
+			listenMethods.Add(startListen);
+			currentGenerator.Emit(OpCodes.Ldarg_0);
+			currentGenerator.Emit(OpCodes.Ldfld, fulfilled);
+		}
 	}
 
 	public void Visit(TranslationEventListenGrouped grouped) {
@@ -1445,37 +1487,83 @@ class CompilationVisitor : IVisitor {
 		FieldBuilder fulfilled = currentClass.DefineField($"event_fulfilled{ev}", typeof(bool), FieldAttributes.Private);
 		falseInits.Add(listenStarted);
 		falseInits.Add(fulfilled);
-		Label l = currentGenerator.DefineLabel();
-		currentGenerator.Emit(OpCodes.Ldarg_0);
-		currentGenerator.Emit(OpCodes.Ldfld, listenStarted);
-		currentGenerator.Emit(OpCodes.Brtrue, l);
-		currentGenerator.Emit(OpCodes.Ldarg_0);
-		currentGenerator.Emit(OpCodes.Ldc_I4_0);
-		currentGenerator.Emit(OpCodes.Stfld, fulfilled);
-		currentGenerator.Emit(OpCodes.Ldarg_0);
-		currentGenerator.Emit(OpCodes.Ldc_I4_1);
-		currentGenerator.Emit(OpCodes.Stfld, listenStarted);
 		MethodBuilder listenMethod = currentClass.DefineMethod($"event_listen{ev}", MethodAttributes.Private, typeof(void), [typeof(EventData)]);
 		ILGenerator gen = listenMethod.GetILGenerator();
 		gen.Emit(OpCodes.Ldarg_0);
 		gen.Emit(OpCodes.Ldc_I4_1);
 		gen.Emit(OpCodes.Stfld, fulfilled);
-		gen.Emit(OpCodes.Ldstr, grouped.ev);
-		gen.Emit(OpCodes.Newobj, DslIdType.GetConstructor([typeof(string)]));
-		gen.Emit(OpCodes.Ldstr, $"event_listen{ev}");
-		gen.Emit(OpCodes.Call, EventBusStop.MakeGenericMethod(DslIdType));
-		gen.Emit(OpCodes.Ret);
-		currentGenerator.Emit(OpCodes.Ldstr, grouped.ev);
-		currentGenerator.Emit(OpCodes.Newobj, DslIdType.GetConstructor([typeof(string)]));
-		currentGenerator.Emit(OpCodes.Ldstr, $"event_listen{ev}");
-		currentGenerator.Emit(OpCodes.Ldarg_0);
-		currentGenerator.Emit(OpCodes.Ldarg_0);
-		currentGenerator.Emit(OpCodes.Ldvirtftn, listenMethod);
-		currentGenerator.Emit(OpCodes.Newobj, typeof(Action<EventData>).GetConstructors().First());
-		currentGenerator.Emit(OpCodes.Call, EventBusListen.MakeGenericMethod(DslIdType));
-		currentGenerator.MarkLabel(l);
-		currentGenerator.Emit(OpCodes.Ldarg_0);
-		currentGenerator.Emit(OpCodes.Ldfld, fulfilled);
+		MethodBuilder stopListening = currentClass.DefineMethod($"event_stoplisten{ev}", MethodAttributes.Private, typeof(void), []);
+		ILGenerator g = stopListening.GetILGenerator();
+		g.Emit(OpCodes.Ldarg_0);
+		g.Emit(OpCodes.Ldfld, listenStarted);
+		Label listening = g.DefineLabel();
+		g.Emit(OpCodes.Brfalse_S, listening);
+		g.Emit(OpCodes.Ldarg_0);
+		g.Emit(OpCodes.Ldc_I4_0);
+		g.Emit(OpCodes.Stfld, listenStarted);
+		g.Emit(OpCodes.Ldstr, grouped.ev);
+		g.Emit(OpCodes.Newobj, DslIdType.GetConstructor([typeof(string)]));
+		g.Emit(OpCodes.Ldstr, $"event_listen{ev}");
+		g.Emit(OpCodes.Call, EventBusStop.MakeGenericMethod(DslIdType));
+		g.MarkLabel(listening);
+		g.Emit(OpCodes.Ret);
+		gen.Emit(OpCodes.Ldarg_0);
+		gen.Emit(OpCodes.Call, stopListening);
+		resetMethods.Add(stopListening);
+		if (!grouped.anypoint)
+		{
+			Label l = currentGenerator.DefineLabel();
+			currentGenerator.Emit(OpCodes.Ldarg_0);
+			currentGenerator.Emit(OpCodes.Ldfld, listenStarted);
+			currentGenerator.Emit(OpCodes.Brtrue, l);
+			currentGenerator.Emit(OpCodes.Ldarg_0);
+			currentGenerator.Emit(OpCodes.Ldfld, fulfilled);
+			currentGenerator.Emit(OpCodes.Brtrue, l);
+			currentGenerator.Emit(OpCodes.Ldarg_0);
+			currentGenerator.Emit(OpCodes.Ldc_I4_0);
+			currentGenerator.Emit(OpCodes.Stfld, fulfilled);
+			currentGenerator.Emit(OpCodes.Ldarg_0);
+			currentGenerator.Emit(OpCodes.Ldc_I4_1);
+			currentGenerator.Emit(OpCodes.Stfld, listenStarted);
+			currentGenerator.Emit(OpCodes.Ldstr, grouped.ev);
+			currentGenerator.Emit(OpCodes.Newobj, DslIdType.GetConstructor([typeof(string)]));
+			currentGenerator.Emit(OpCodes.Ldstr, $"event_listen{ev}");
+			currentGenerator.Emit(OpCodes.Ldarg_0);
+			currentGenerator.Emit(OpCodes.Ldarg_0);
+			currentGenerator.Emit(OpCodes.Ldvirtftn, listenMethod);
+			currentGenerator.Emit(OpCodes.Newobj, typeof(Action<EventData>).GetConstructors().First());
+			currentGenerator.Emit(OpCodes.Call, EventBusListen.MakeGenericMethod(DslIdType));
+			currentGenerator.MarkLabel(l);
+			currentGenerator.Emit(OpCodes.Ldarg_0);
+			currentGenerator.Emit(OpCodes.Ldfld, fulfilled);
+		}
+		else {
+			MethodBuilder startListen = currentClass.DefineMethod($"event_startlisten{ev}", MethodAttributes.Private, typeof(void), []);
+			ILGenerator il = startListen.GetILGenerator();
+			Label l = currentGenerator.DefineLabel();
+			il.Emit(OpCodes.Ldarg_0);
+			il.Emit(OpCodes.Ldfld, listenStarted);
+			il.Emit(OpCodes.Brtrue, l);
+			il.Emit(OpCodes.Ldarg_0);
+			il.Emit(OpCodes.Ldc_I4_0);
+			il.Emit(OpCodes.Stfld, fulfilled);
+			il.Emit(OpCodes.Ldarg_0);
+			il.Emit(OpCodes.Ldc_I4_1);
+			il.Emit(OpCodes.Stfld, listenStarted);
+			il.Emit(OpCodes.Ldstr, grouped.ev);
+			il.Emit(OpCodes.Newobj, DslIdType.GetConstructor([typeof(string)]));
+			il.Emit(OpCodes.Ldstr, $"event_listen{ev}");
+			il.Emit(OpCodes.Ldarg_0);
+			il.Emit(OpCodes.Ldarg_0);
+			il.Emit(OpCodes.Ldvirtftn, listenMethod);
+			il.Emit(OpCodes.Newobj, typeof(Action<EventData>).GetConstructors().First());
+			il.Emit(OpCodes.Call, EventBusListen.MakeGenericMethod(DslIdType));
+			il.MarkLabel(l);
+			il.Emit(OpCodes.Ret);
+			listenMethods.Add(startListen);
+			currentGenerator.Emit(OpCodes.Ldarg_0);
+			currentGenerator.Emit(OpCodes.Ldfld, fulfilled);
+		}
 	}
 
 	public void Visit(TranslationFulfilled ct) {
