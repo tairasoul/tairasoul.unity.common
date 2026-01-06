@@ -140,7 +140,7 @@ public class BitWriterAsync(Stream stream) : IDisposable
 
 #if BITWRITING_ASYNC_GENERICWRITE
 	public async Task Write<T>(T data) {
-		await SerDesMap.Serialize(data, this);
+		await SerDesMapAsync.Serialize(data, this);
 	}
 #endif
 

@@ -179,7 +179,7 @@ public class BitReaderAsync : IDisposable
 #if BITREADING_ASYNC_GENERICREAD
 	public async Task<T> Read<T>() {
 		Type type = typeof(T);
-		return (T)await SerDesMap.Deserialize(type, this);
+		return (T)await SerDesMapAsync.Deserialize(type, this);
 	}
 #endif
 

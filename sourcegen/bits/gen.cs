@@ -37,7 +37,7 @@ public class BitSerDes : IIncrementalGenerator
 						serdesTypes.Add(type!);
 					}
 				}
-				SerdesGen.GenerateSerDes(ctx, serdesTypes, types.Right.Contains("BITWRITING_ASYNC_GENERICWRITE"), types.Right.Contains("BITREADING_ASYNC_GENERICREAD"));
+				SerdesGen.GenerateSerDes(ctx, serdesTypes, types.Right.Contains("BITWRITING_ASYNC_GENERICWRITE"), types.Right.Contains("BITREADING_ASYNC_GENERICREAD"), types.Right.Contains("BITWRITING_SYNC_GENERICWRITE"), types.Right.Contains("BITREADING_SYNC_GENERICREAD"));
 			}
 			catch (Exception ex)
 			{
