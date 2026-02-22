@@ -8,7 +8,7 @@ using sdi = System.Collections.Immutable.ImmutableArray<tairasoul.unity.common.s
 
 // sourcegen for networking layer & as a consequence also for the bit serdes
 // automatically creates client & server deserialization steps for specific packet types
-// only supports synchronous writer & asynchronous writer here, main bit serdes sourcegen supports both
+// only supports synchronous writer & asynchronous reader here, main bit serdes sourcegen supports both
 
 namespace tairasoul.unity.common.sourcegen.networking;
 
