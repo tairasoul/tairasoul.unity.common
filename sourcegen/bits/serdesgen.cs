@@ -1042,7 +1042,7 @@ class SerdesGen {
 				sb.AppendLine("namespace tairasoul.unity.common.serdes;");
 				sb.AppendLine($"[GeneratedCode({GeneratedCodeData})]");
 				sb.AppendLine("class SerDesMapAsync {");
-				if (genSyncSer) {
+				if (genAsyncSer) {
 					sb.AppendLine($"{Tabs()}public static async Task Serialize(object value, BitWriterAsync writer) {{");
 					foreach (SerdesTypeStruct struc in structs)
 					{
@@ -1073,7 +1073,7 @@ class SerdesGen {
 					}
 					sb.AppendLine($"{Tabs()}}}");
 				}
-				if (genSyncDes) {
+				if (genAsyncDes) {
 					sb.AppendLine($"{Tabs()}public static async Task<object> Deserialize(Type type, BitReaderAsync reader) {{");
 					foreach (SerdesTypeStruct struc in structs)
 					{
