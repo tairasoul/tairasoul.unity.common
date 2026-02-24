@@ -1,3 +1,5 @@
+using System;
+
 namespace tairasoul.unity.common.speedrunning.dsl.config;
 
 public static class DslCompilationConfig {

@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -15,15 +17,15 @@ record AccessorGetCacheKey(Type type, string fieldName);
 // record AccessorCallCacheKey(Type type, string methodName, Type[] argTypes);
 
 public static class AccessorUtil {
-	internal static Dictionary<AccessorGetCacheKey, Func<object, object>> CachedGetAccessors = [];
-	// internal static Dictionary<AccessorSetCacheKey, Func<object, object>> CachedSetAccessors = [];
+	internal static ConcurrentDictionary<AccessorGetCacheKey, Func<object, object>> CachedGetAccessors = [];
+	// internal static Dictionary<AccessorSetCacheKey, Action<object, object>> CachedSetAccessors = [];
 #if ACCESSOR_INCLUDE_FINDFUNC
-	internal static Dictionary<string, GameObject> GameObjectCache = [];
+	internal static ConcurrentDictionary<string, GameObject> GameObjectCache = [];
 #endif
 
 	internal static void RemoveElement(Type type, string fieldName) {
-		CachedGetAccessors.Remove(new(type, fieldName));
-		// CachedSetAccessors.Remove(new(type, fieldName));
+		CachedGetAccessors.TryRemove(new(type, fieldName), out _);
+		// CachedSetAccessors.TryRemove(new(type, fieldName), out _);
 	}
 
 	internal static void ClearCache()

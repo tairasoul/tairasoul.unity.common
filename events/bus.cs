@@ -9,18 +9,11 @@ using tairasoul.unity.common.hashing;
 namespace tairasoul.unity.common.events;
 
 record EventListener(string id, Action<EventData> listener);
-#if PUBLIC_EVENTBUS
 public abstract record EventID();
 public abstract record EventData();
 
 public static class EventBus
 {
-#else
-abstract record EventID();
-abstract record EventData();
-
-static class EventBus {
-#endif
 	static ConcurrentDictionary<EventID, List<EventListener>> listeners = [];
 
 	public static void Listen<T>(T eventId, string listenerId, Action<EventData> listener)
@@ -60,7 +53,7 @@ static class EventBus {
 		where T : EventID
 		where H : EventData
 	{
-		string listenerId = Murmur3.Hash128($"{DateTime.Now}_autoListenerWaitFor");
+		string listenerId = Murmur3.Hash128String($"{DateTime.Now}_autoListenerWaitFor");
 		TaskCompletionSource<H> tcs = new();
 		Listen(eventId, listenerId, ed =>
 		{

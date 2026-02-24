@@ -1,12 +1,8 @@
-#if BITREADING_INCLUDE_ASYNC
 using System;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
-#if BITREADING_ASYNC_GENERICREAD
-using tairasoul.unity.common.serdes;
-#endif
 using tairasoul.unity.common.util;
 
 namespace tairasoul.unity.common.bits;
@@ -176,12 +172,9 @@ public class BitReaderAsync : IDisposable
 		return await ReadString(length);
 	}
 
-#if BITREADING_ASYNC_GENERICREAD
 	public async Task<T> Read<T>() {
-		Type type = typeof(T);
-		return (T)await SerDesMapAsync.Deserialize(type, this);
+		return await SerdeRegistry.Deserialize<T>(this);
 	}
-#endif
 
 	/// <summary>
 	/// See https://github.com/microsoft/referencesource/blob/main/mscorlib/system/io/binaryreader.cs#L582
@@ -200,4 +193,3 @@ public class BitReaderAsync : IDisposable
 		return count;
 	}
 }
-#endif

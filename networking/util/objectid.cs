@@ -2,7 +2,7 @@ using System.Runtime.CompilerServices;
 
 namespace tairasoul.unity.common.networking.util;
 
-class ObjectIdUtils {
+public static class ObjectIdUtils {
 	const int PlayerIdBitshift = 52;
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]

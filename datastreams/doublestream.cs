@@ -4,7 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 namespace tairasoul.unity.common.datastreams;
 
-class DoubleStream(Stream read, Stream write) : Stream {
+public class DoubleStream(Stream read, Stream write) : Stream {
 	private readonly CancellationTokenSource _cts = new();
 	public override bool CanRead => true;
 	public override bool CanSeek => false;

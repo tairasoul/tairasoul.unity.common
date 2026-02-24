@@ -106,7 +106,7 @@ class SerdesGen {
 		return [];
 	}
 
-	static readonly SymbolDisplayFormat format = new(
+		static readonly SymbolDisplayFormat format = new(
 		globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Omitted,
 		typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces
 	);
@@ -137,7 +137,8 @@ class SerdesGen {
 									SerdesType s2 = ProcessStruct(named, encountered, extras);
 									extras.Add(s2);
 								}
-								SerdesType s = new SerdesTypeQualifiedReference(display);
+								string parentNamespace = named.ContainingNamespace.ToDisplayString(format);
+								SerdesType s = new SerdesTypeQualifiedReference(display, parentNamespace);
 								variants.Add(s);
 							}
 							else if (named.TypeKind == TypeKind.Enum)
@@ -188,7 +189,8 @@ class SerdesGen {
 						SerdesType s2 = ProcessStruct(named, encountered, extras);
 						extras.Add(s2);
 					}
-					SerdesType s = new SerdesTypeQualifiedReference(display);
+					string parentNamespace = named.ContainingNamespace.ToDisplayString(format);
+					SerdesType s = new SerdesTypeQualifiedReference(display, parentNamespace);
 					SerdesTypeStructField sfield = new(field.Name, s, field.DeclaredAccessibility != Accessibility.Public, null, false, field.NullableAnnotation == NullableAnnotation.Annotated);
 					fields.Add(sfield);
 				}
@@ -238,7 +240,8 @@ class SerdesGen {
 							SerdesType s2 = ProcessStruct(named, encountered, extras);
 							extras.Add(s2);
 						}
-						SerdesType s = new SerdesTypeQualifiedReference(display);
+						string parentNamespace = named.ContainingNamespace.ToDisplayString(format);
+						SerdesType s = new SerdesTypeQualifiedReference(display, parentNamespace);
 						SerdesTypeStructField sfield = new(field.Name, s, field.DeclaredAccessibility != Accessibility.Public, null, true, field.NullableAnnotation == NullableAnnotation.Annotated);
 						fields.Add(sfield);
 					}
@@ -271,7 +274,7 @@ class SerdesGen {
 				}
 			}
 		}
-		return new SerdesTypeStruct(symbol.ToDisplayString(format), fields.ToImmutableArray(), symbol.IsRecord);
+		return new SerdesTypeStruct(symbol.ToDisplayString(format), symbol.ContainingNamespace.ToDisplayString(format), fields.ToImmutableArray(), symbol.IsRecord);
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -331,7 +334,8 @@ class SerdesGen {
 					SerdesType s2 = ProcessStruct(named, encountered, extras);
 					extras.Add(s2);
 				}
-				key = new SerdesTypeQualifiedReference(named.ToDisplayString(format));
+				string parentNamespace = named.ContainingNamespace.ToDisplayString(format);
+				key = new SerdesTypeQualifiedReference(named.ToDisplayString(format), parentNamespace);
 			}
 			else {
 				throw new Exception("this shouldn't happen");
@@ -360,7 +364,8 @@ class SerdesGen {
 					SerdesType s2 = ProcessStruct(named, encountered, extras);
 					extras.Add(s2);
 				}
-				value = new SerdesTypeQualifiedReference(named.ToDisplayString(format));
+				string parentNamespace = named.ContainingNamespace.ToDisplayString(format);
+				value = new SerdesTypeQualifiedReference(named.ToDisplayString(format), parentNamespace);
 			}
 			else {
 				throw new Exception("this shouldn't happen");
@@ -696,7 +701,7 @@ class SerdesGen {
 			case SerdesTypeDictionary typeDictionary:
 				List<string> dictLines = [];
 				string dictTs = GetValidCSTostring(typeDictionary);
-				dictLines.Add($"int {Hash($"{appendExtra}dict{dictTs}length")} = {GetPrimitiveDes(PrimitiveType.Int, typeDictionary.lengthSize != null ? $"{typeDictionary.lengthSize}" : "")}");
+				dictLines.Add($"int {Hash($"{appendExtra}dict{dictTs}length")} = {GetPrimitiveDes(PrimitiveType.Int, typeDictionary.lengthSize != null ? $"{typeDictionary.lengthSize}" : "", async)}");
 				string dictvar = Hash($"{appendExtra}{dictTs}");
 				dictLines.Add($"{GetQualifiedName(typeDictionary)} {dictvar} = []");
 				string dictKeyStr = GetValidCSTostring(typeDictionary.key);
@@ -742,10 +747,10 @@ class SerdesGen {
 				string des = GetPrimitiveDes(typePrimitive.primitive, sizeStr, async);
 				return [$"%2 = {des}"];
 			case SerdesTypeQualifiedReference typeReference:
-				string underscored = typeReference.qualifiedName.Replace(".", "_");
-				return [
-					$"%2 = {(async ? "await " : "")}{Hash(underscored)}SerDes{(async ? "Async" : "")}.Deserialize(%1)"
-				];
+				var split = typeReference.qualifiedName.Split('.');
+				var last = split.Last();
+				var serde_ns = string.Join(".", [typeReference.ns, "serde"]);
+				return [$"%2 = {(async ? "await " : "")}{serde_ns}.{last}Serde.Deserialize{(async ? "Async" : "")}(%1)"];
 			default:
 				return [];
 		}
@@ -757,11 +762,11 @@ class SerdesGen {
 			case SerdesTypeStruct typeStruct:
 				List<string> structLines = [];
 				HashSet<string> typesAdded = [];
+				string fieldStr = GetValidCSTostring(typeStruct);
 				foreach (SerdesTypeStructField field in typeStruct.fields)
 				{
 					if (field.useReflection)
 					{
-						string fieldStr = GetValidCSTostring(typeStruct);
 						if (typesAdded.Add(fieldStr))
 							structLines.Add($"Type {Hash($"{fieldStr}Type")} = typeof({GetQualifiedName(typeStruct)});");
 						if (field.isNullable)
@@ -859,91 +864,48 @@ class SerdesGen {
 				string ser = GetPrimitiveSer(typePrimitive.primitive, sizeStr, async);
 				return [ser];
 			case SerdesTypeQualifiedReference typeReference:
-				return [$"{(async ? "await " : "")}{Hash(typeReference.qualifiedName.Replace(".", "_"))}SerDes{(async ? "Async" : "")}.Serialize(%2, %1)"];
+				var split = typeReference.qualifiedName.Split('.');
+				var last = split.Last();
+				var serde_ns = string.Join(".", [typeReference.ns, "serde"]);
+				return [$"{(async ? "await " : "")}{serde_ns}.{last}Serde.Serialize{(async ? "Async" : "")}(%2, %1)"];
 			default:
 				return [];
 		}
 	}
 
-	public static void GenerateSerDes(SourceProductionContext prodContext, IEnumerable<SerdesType> serdes, bool genAsyncSer = false, bool genAsyncDes = true, bool genSyncSer = true, bool genSyncDes = false)
+	public static void GenerateSerDes(SourceProductionContext prodContext, IEnumerable<SerdesType> serdes)
 	{
 		SerdesTypeStruct[] structs = [.. serdes.Select((v) => v is SerdesTypeStruct str ? str : null).Where(c => c is not null)!];
 		SerdesTypeEnum[] enums = [.. serdes.Select((v) => v is SerdesTypeEnum str ? str : null).Where(c => c is not null)!];
 		{
 			foreach (SerdesTypeStruct struc in structs) {
-				string hashed = Hash(struc.qualifiedName.Replace(".", "_"));
-				if (genAsyncSer)
+				List<string> ns_pieces = struc.qualifiedName.Split('.').ToList();
+				string hashed = Hash(struc.qualifiedName);
+				string name = ns_pieces.Last();
+				string ns = struc.ns;
+				StringBuilder sb = new();
+				sb.AppendLine("using System;");
+				sb.AppendLine("using tairasoul.unity.common.bits;");
+				sb.AppendLine("using System.CodeDom.Compiler;");
+				sb.AppendLine("using System.Reflection;");
+				sb.AppendLine("using System.Threading.Tasks;");
+				sb.AppendLine($"namespace {ns}.serde;");
+				sb.AppendLine($"[GeneratedCode({GeneratedCodeData})]");
+				sb.AppendLine($"static class {name}Serde {{");
 				{
-					StringBuilder sb = new();
-					sb.AppendLine("using System;");
-					sb.AppendLine("using tairasoul.unity.common.bits;");
-					sb.AppendLine("using System.CodeDom.Compiler;");
-					sb.AppendLine("using System.Reflection;");
-					sb.AppendLine("using System.Threading.Tasks;");
-					sb.AppendLine("namespace tairasoul.unity.common.serdes;");
-					sb.AppendLine($"[GeneratedCode({GeneratedCodeData})]");
-					sb.AppendLine($"partial class {hashed}SerDesAsync {{");
-					sb.AppendLine($"{Tabs()}public static async Task Serialize({struc.qualifiedName} {hashed}, BitWriterAsync writer) {{");
+					sb.AppendLine($"{Tabs()}public static async Task SerializeAsync({struc.qualifiedName} {hashed}, BitWriterAsync writer) {{");
 					IEnumerable<string> serLines = GetSer(struc, async: true);
 					foreach (string ser in serLines)
 					{
 						sb.AppendLine($"{Tabs(2)}{ser.Replace("%1", "writer").Replace("%2", hashed)}");
 					}
 					sb.AppendLine($"{Tabs()}}}");
-					prodContext.AddSource($"serdes/{struc.qualifiedName.Replace(".", "_")}-async-ser.g.cs", sb.ToString());
 				}
-				if (genAsyncDes) {
-					StringBuilder sb = new();
-					sb.AppendLine("using System;");
-					sb.AppendLine("using tairasoul.unity.common.bits;");
-					sb.AppendLine("using System.CodeDom.Compiler;");
-					sb.AppendLine("using System.Reflection;");
-					sb.AppendLine("using System.Threading.Tasks;");
-					sb.AppendLine("namespace tairasoul.unity.common.serdes;");
-					sb.AppendLine($"[GeneratedCode({GeneratedCodeData})]");
-					sb.AppendLine($"partial class {hashed}SerDesAsync {{");
-					sb.AppendLine($"{Tabs()}public static async Task<{struc.qualifiedName}> Deserialize(BitReaderAsync reader) {{");
+				{
+					sb.AppendLine($"{Tabs()}public static async Task<{struc.qualifiedName}> DeserializeAsync(BitReaderAsync reader) {{");
 					IEnumerable<string> desLines = GetDes(struc, async: true);
-					if (!desLines.Any((v) => v.Contains("%2 =")))
-						desLines = [.. desLines, $"return instance{hashed}async;"];
-					foreach (string des in desLines)
-					{
-						sb.AppendLine($"{Tabs(2)}{des.Replace("%1", "reader").Replace("%2 =", "return").Replace("%2", $"instance{hashed}async")}");
-					}
-					sb.AppendLine($"{Tabs()}}}");
-					prodContext.AddSource($"serdes/{struc.qualifiedName.Replace(".", "_")}-async-des.g.cs", sb.ToString());
-				}
-				if (genSyncSer) {
-					StringBuilder sb = new();
-					sb.AppendLine("using System;");
-					sb.AppendLine("using tairasoul.unity.common.bits;");
-					sb.AppendLine("using System.CodeDom.Compiler;");
-					sb.AppendLine("using System.Reflection;");
-					sb.AppendLine("using System.Threading.Tasks;");
-					sb.AppendLine("namespace tairasoul.unity.common.serdes;");
-					sb.AppendLine($"[GeneratedCode({GeneratedCodeData})]");
-					sb.AppendLine($"partial class {hashed}SerDes {{");
-					sb.AppendLine($"{Tabs()}public static void Serialize({struc.qualifiedName} {hashed}, BitWriter writer) {{");
-					IEnumerable<string> serLines = GetSer(struc, async: false);
-					foreach (string ser in serLines)
-					{
-						sb.AppendLine($"{Tabs(2)}{ser.Replace("%1", "writer").Replace("%2", hashed)}");
-					}
-					sb.AppendLine($"{Tabs()}}}");
-					prodContext.AddSource($"serdes/{struc.qualifiedName.Replace(".", "_")}-sync-ser.g.cs", sb.ToString());
-				}
-				if (genSyncDes) {
-					StringBuilder sb = new();
-					sb.AppendLine("using System;");
-					sb.AppendLine("using tairasoul.unity.common.bits;");
-					sb.AppendLine("using System.CodeDom.Compiler;");
-					sb.AppendLine("using System.Reflection;");
-					sb.AppendLine("using System.Threading.Tasks;");
-					sb.AppendLine("namespace tairasoul.unity.common.serdes;");
-					sb.AppendLine($"[GeneratedCode({GeneratedCodeData})]");
-					sb.AppendLine($"partial class {hashed}SerDesAsync {{");
-					sb.AppendLine($"{Tabs()}public static {struc.qualifiedName} Deserialize(BitReader reader) {{");
-					IEnumerable<string> desLines = GetDes(struc, async: false);
+					if (!struc.isRecord)
+						desLines = desLines.Prepend($"{struc.qualifiedName} instance{hashed} = default;");
 					if (!desLines.Any((v) => v.Contains("%2 =")))
 						desLines = [.. desLines, $"return instance{hashed};"];
 					foreach (string des in desLines)
@@ -951,162 +913,185 @@ class SerdesGen {
 						sb.AppendLine($"{Tabs(2)}{des.Replace("%1", "reader").Replace("%2 =", "return").Replace("%2", $"instance{hashed}")}");
 					}
 					sb.AppendLine($"{Tabs()}}}");
-					prodContext.AddSource($"serdes/{struc.qualifiedName.Replace(".", "_")}-sync-des.g.cs", sb.ToString());
 				}
+				{
+					sb.AppendLine($"{Tabs()}public static void Serialize({struc.qualifiedName} {hashed}, BitWriter writer) {{");
+					IEnumerable<string> serLines = GetSer(struc, async: false);
+					foreach (string ser in serLines)
+					{
+						sb.AppendLine($"{Tabs(2)}{ser.Replace("%1", "writer").Replace("%2", hashed)}");
+					}
+					sb.AppendLine($"{Tabs()}}}");
+				}
+				{
+					sb.AppendLine($"{Tabs()}public static {struc.qualifiedName} Deserialize(BitReader reader) {{");
+					IEnumerable<string> desLines = GetDes(struc, async: false);
+					if (!struc.isRecord)
+						desLines = desLines.Prepend($"{struc.qualifiedName} instance{hashed} = default;");
+					if (!desLines.Any((v) => v.Contains("%2 =")))
+						desLines = [.. desLines, $"return instance{hashed};"];
+					foreach (string des in desLines)
+					{
+						sb.AppendLine($"{Tabs(2)}{des.Replace("%1", "reader").Replace("%2 =", "return").Replace("%2", $"instance{hashed}")}");
+					}
+					sb.AppendLine($"{Tabs()}}}");
+				}
+				sb.AppendLine($"}}");
+				prodContext.AddSource($"serde/{struc.qualifiedName.Replace(".", "_")}-serde.g.cs", sb.ToString());
 			}
 		}
-		{
-			if (genSyncDes || genSyncSer)
-			{
-				StringBuilder sb = new();
-				sb.AppendLine("using System;");
-				sb.AppendLine("using tairasoul.unity.common.bits;");
-				sb.AppendLine("using System.CodeDom.Compiler;");
-				sb.AppendLine("using System.Reflection;");
-				sb.AppendLine("using System.Threading.Tasks;");
-				sb.AppendLine("namespace tairasoul.unity.common.serdes;");
-				sb.AppendLine($"[GeneratedCode({GeneratedCodeData})]");
-				sb.AppendLine("class SerDesMap {");
-				if (genSyncSer) {
-					sb.AppendLine($"{Tabs()}public static void Serialize(object value, BitWriter writer) {{");
-					foreach (SerdesTypeStruct struc in structs)
-					{
-						string underscored = Hash(struc.qualifiedName.Replace(".", "_"));
-						SerdesTypeQualifiedReference refer = new(struc.qualifiedName);
-						IEnumerable<string> ser = GetSer(refer, async: false);
-						sb.AppendLine($"{Tabs(2)}if (value is {struc.qualifiedName} {underscored}) {{");
-						foreach (string serStr in ser)
-						{
-							string end = !serStr.EndsWith("{") && !serStr.EndsWith("}") && !serStr.EndsWith(";") ? ";" : "";
-							sb.AppendLine($"{Tabs(3)}{serStr.Replace("%1", "writer").Replace("%2", underscored)}{end}");
-						}
-						sb.AppendLine($"{Tabs(3)}return;");
-						sb.AppendLine($"{Tabs(2)}}}");
-					}
-					foreach (SerdesTypeEnum tenum in enums)
-					{
-						string underscored = Hash(tenum.qualifiedName.Replace(".", "_"));
-						IEnumerable<string> ser = GetSer(tenum, async: false);
-						sb.AppendLine($"{Tabs(2)}if (value is {tenum.qualifiedName} {underscored}) {{");
-						foreach (string serStr in ser)
-						{
-							string end = !serStr.EndsWith("{") && !serStr.EndsWith("}") && !serStr.EndsWith(";") ? ";" : "";
-							sb.AppendLine($"{Tabs(3)}{serStr.Replace("%1", "writer").Replace("%2", underscored)}{end}");
-						}
-						sb.AppendLine($"{Tabs(3)}return;");
-						sb.AppendLine($"{Tabs(2)}}}");
-					}
-					sb.AppendLine($"{Tabs()}}}");
-				}
-				if (genSyncDes) {
-					sb.AppendLine($"{Tabs()}public static object Deserialize(Type type, BitReader reader) {{");
-					foreach (SerdesTypeStruct struc in structs)
-					{
-						string underscored = Hash(struc.qualifiedName.Replace(".", "_"));
-						SerdesTypeQualifiedReference refer = new(struc.qualifiedName);
-						List<string> des = [.. GetDes(refer, async: false)];
-						des[des.Count - 1] = des[des.Count - 1].Replace("%2 =", "return");
-						sb.AppendLine($"{Tabs(2)}if (type == typeof({struc.qualifiedName})) {{");
-						foreach (string desStr in des)
-						{
-							string end = !desStr.EndsWith("{") && !desStr.EndsWith("}") && !desStr.EndsWith(";") ? ";" : "";
-							sb.AppendLine($"{Tabs(3)}{desStr.Replace("%1", "reader")}{end}");
-						}
-						sb.AppendLine($"{Tabs(2)}}}");
-					}
-					foreach (SerdesTypeEnum tenum in enums)
-					{
-						List<string> des = [.. GetDes(tenum, async: false)];
-						des[des.Count - 1] = des[des.Count - 1].Replace("%2 =", "return");
-						sb.AppendLine($"{Tabs(2)}if (type == typeof({tenum.qualifiedName})) {{");
-						foreach (string desStr in des)
-						{
-							string end = !desStr.EndsWith("{") && !desStr.EndsWith("}") && !desStr.EndsWith(";") ? ";" : "";
-							sb.AppendLine($"{Tabs(3)}{desStr.Replace("%1", "reader")}{end}");
-						}
-						sb.AppendLine($"{Tabs(2)}}}");
-					}
-					sb.AppendLine($"{Tabs(2)}throw new System.Exception($\"this should not happen, could not deserialize type {{type}}\");");
-					sb.AppendLine($"{Tabs()}}}");
-				}
-				sb.AppendLine("}");
-				prodContext.AddSource("serdes/map-sync.g.cs", sb.ToString());
-			}
-			if (genAsyncDes || genAsyncSer) {
-				StringBuilder sb = new();
-				sb.AppendLine("using System;");
-				sb.AppendLine("using tairasoul.unity.common.bits;");
-				sb.AppendLine("using System.CodeDom.Compiler;");
-				sb.AppendLine("using System.Reflection;");
-				sb.AppendLine("using System.Threading.Tasks;");
-				sb.AppendLine("namespace tairasoul.unity.common.serdes;");
-				sb.AppendLine($"[GeneratedCode({GeneratedCodeData})]");
-				sb.AppendLine("class SerDesMapAsync {");
-				if (genAsyncSer) {
-					sb.AppendLine($"{Tabs()}public static async Task Serialize(object value, BitWriterAsync writer) {{");
-					foreach (SerdesTypeStruct struc in structs)
-					{
-						string underscored = Hash(struc.qualifiedName.Replace(".", "_"));
-						SerdesTypeQualifiedReference refer = new(struc.qualifiedName);
-						IEnumerable<string> ser = GetSer(refer, async: false);
-						sb.AppendLine($"{Tabs(2)}if (value is {struc.qualifiedName} {underscored}) {{");
-						foreach (string serStr in ser)
-						{
-							string end = !serStr.EndsWith("{") && !serStr.EndsWith("}") && !serStr.EndsWith(";") ? ";" : "";
-							sb.AppendLine($"{Tabs(3)}{serStr.Replace("%1", "writer").Replace("%2", underscored)}{end}");
-						}
-						sb.AppendLine($"{Tabs(3)}return;");
-						sb.AppendLine($"{Tabs(2)}}}");
-					}
-					foreach (SerdesTypeEnum tenum in enums)
-					{
-						string underscored = Hash(tenum.qualifiedName.Replace(".", "_"));
-						IEnumerable<string> ser = GetSer(tenum, async: false);
-						sb.AppendLine($"{Tabs(2)}if (value is {tenum.qualifiedName} {underscored}) {{");
-						foreach (string serStr in ser)
-						{
-							string end = !serStr.EndsWith("{") && !serStr.EndsWith("}") && !serStr.EndsWith(";") ? ";" : "";
-							sb.AppendLine($"{Tabs(3)}{serStr.Replace("%1", "writer").Replace("%2", underscored)}{end}");
-						}
-						sb.AppendLine($"{Tabs(3)}return;");
-						sb.AppendLine($"{Tabs(2)}}}");
-					}
-					sb.AppendLine($"{Tabs()}}}");
-				}
-				if (genAsyncDes) {
-					sb.AppendLine($"{Tabs()}public static async Task<object> Deserialize(Type type, BitReaderAsync reader) {{");
-					foreach (SerdesTypeStruct struc in structs)
-					{
-						string underscored = Hash(struc.qualifiedName.Replace(".", "_"));
-						SerdesTypeQualifiedReference refer = new(struc.qualifiedName);
-						List<string> des = [.. GetDes(refer, async: true)];
-						des[des.Count - 1] = des[des.Count - 1].Replace("%2 =", "return");
-						sb.AppendLine($"{Tabs(2)}if (type == typeof({struc.qualifiedName})) {{");
-						foreach (string desStr in des)
-						{
-							string end = !desStr.EndsWith("{") && !desStr.EndsWith("}") && !desStr.EndsWith(";") ? ";" : "";
-							sb.AppendLine($"{Tabs(3)}{desStr.Replace("%1", "reader")}{end}");
-						}
-						sb.AppendLine($"{Tabs(2)}}}");
-					}
-					foreach (SerdesTypeEnum tenum in enums)
-					{
-						List<string> des = [.. GetDes(tenum, async: true)];
-						des[des.Count - 1] = des[des.Count - 1].Replace("%2 =", "return");
-						sb.AppendLine($"{Tabs(2)}if (type == typeof({tenum.qualifiedName})) {{");
-						foreach (string desStr in des)
-						{
-							string end = !desStr.EndsWith("{") && !desStr.EndsWith("}") && !desStr.EndsWith(";") ? ";" : "";
-							sb.AppendLine($"{Tabs(3)}{desStr.Replace("%1", "reader")}{end}");
-						}
-						sb.AppendLine($"{Tabs(2)}}}");
-					}
-					sb.AppendLine($"{Tabs(2)}throw new System.Exception($\"this should not happen, could not deserialize type {{type}}\");");
-					sb.AppendLine($"{Tabs()}}}");
-				}
-				sb.AppendLine("}");
-				prodContext.AddSource("serdes/map-async.g.cs", sb.ToString());
-			}
+		// {
+		// 	if (genSyncDes || genSyncSer)
+		// 	{
+		// 		StringBuilder sb = new();
+		// 		sb.AppendLine("using System;");
+		// 		sb.AppendLine("using tairasoul.unity.common.bits;");
+		// 		sb.AppendLine("using System.CodeDom.Compiler;");
+		// 		sb.AppendLine("using System.Reflection;");
+		// 		sb.AppendLine("using System.Threading.Tasks;");
+		// 		sb.AppendLine("namespace tairasoul.unity.common.serdes;");
+		// 		sb.AppendLine($"[GeneratedCode({GeneratedCodeData})]");
+		// 		sb.AppendLine("class SerDesMap {");
+		// 		if (genSyncSer) {
+		// 			sb.AppendLine($"{Tabs()}public static void Serialize(object value, BitWriter writer) {{");
+		// 			foreach (SerdesTypeStruct struc in structs)
+		// 			{
+		// 				string underscored = Hash(struc.qualifiedName.Replace(".", "_"));
+		// 				SerdesTypeQualifiedReference refer = new(struc.qualifiedName);
+		// 				IEnumerable<string> ser = GetSer(refer, async: false);
+		// 				sb.AppendLine($"{Tabs(2)}if (value is {struc.qualifiedName} {underscored}) {{");
+		// 				foreach (string serStr in ser)
+		// 				{
+		// 					string end = !serStr.EndsWith("{") && !serStr.EndsWith("}") && !serStr.EndsWith(";") ? ";" : "";
+		// 					sb.AppendLine($"{Tabs(3)}{serStr.Replace("%1", "writer").Replace("%2", underscored)}{end}");
+		// 				}
+		// 				sb.AppendLine($"{Tabs(3)}return;");
+		// 				sb.AppendLine($"{Tabs(2)}}}");
+		// 			}
+		// 			foreach (SerdesTypeEnum tenum in enums)
+		// 			{
+		// 				string underscored = Hash(tenum.qualifiedName.Replace(".", "_"));
+		// 				IEnumerable<string> ser = GetSer(tenum, async: false);
+		// 				sb.AppendLine($"{Tabs(2)}if (value is {tenum.qualifiedName} {underscored}) {{");
+		// 				foreach (string serStr in ser)
+		// 				{
+		// 					string end = !serStr.EndsWith("{") && !serStr.EndsWith("}") && !serStr.EndsWith(";") ? ";" : "";
+		// 					sb.AppendLine($"{Tabs(3)}{serStr.Replace("%1", "writer").Replace("%2", underscored)}{end}");
+		// 				}
+		// 				sb.AppendLine($"{Tabs(3)}return;");
+		// 				sb.AppendLine($"{Tabs(2)}}}");
+		// 			}
+		// 			sb.AppendLine($"{Tabs()}}}");
+		// 		}
+		// 		if (genSyncDes) {
+		// 			sb.AppendLine($"{Tabs()}public static object Deserialize(Type type, BitReader reader) {{");
+		// 			foreach (SerdesTypeStruct struc in structs)
+		// 			{
+		// 				string underscored = Hash(struc.qualifiedName.Replace(".", "_"));
+		// 				SerdesTypeQualifiedReference refer = new(struc.qualifiedName);
+		// 				List<string> des = [.. GetDes(refer, async: false)];
+		// 				des[des.Count - 1] = des[des.Count - 1].Replace("%2 =", "return");
+		// 				sb.AppendLine($"{Tabs(2)}if (type == typeof({struc.qualifiedName})) {{");
+		// 				foreach (string desStr in des)
+		// 				{
+		// 					string end = !desStr.EndsWith("{") && !desStr.EndsWith("}") && !desStr.EndsWith(";") ? ";" : "";
+		// 					sb.AppendLine($"{Tabs(3)}{desStr.Replace("%1", "reader")}{end}");
+		// 				}
+		// 				sb.AppendLine($"{Tabs(2)}}}");
+		// 			}
+		// 			foreach (SerdesTypeEnum tenum in enums)
+		// 			{
+		// 				List<string> des = [.. GetDes(tenum, async: false)];
+		// 				des[des.Count - 1] = des[des.Count - 1].Replace("%2 =", "return");
+		// 				sb.AppendLine($"{Tabs(2)}if (type == typeof({tenum.qualifiedName})) {{");
+		// 				foreach (string desStr in des)
+		// 				{
+		// 					string end = !desStr.EndsWith("{") && !desStr.EndsWith("}") && !desStr.EndsWith(";") ? ";" : "";
+		// 					sb.AppendLine($"{Tabs(3)}{desStr.Replace("%1", "reader")}{end}");
+		// 				}
+		// 				sb.AppendLine($"{Tabs(2)}}}");
+		// 			}
+		// 			sb.AppendLine($"{Tabs(2)}throw new System.Exception($\"this should not happen, could not deserialize type {{type}}\");");
+		// 			sb.AppendLine($"{Tabs()}}}");
+		// 		}
+		// 		sb.AppendLine("}");
+		// 		prodContext.AddSource("serdes/map-sync.g.cs", sb.ToString());
+		// 	}
+		// 	if (genAsyncDes || genAsyncSer) {
+		// 		StringBuilder sb = new();
+		// 		sb.AppendLine("using System;");
+		// 		sb.AppendLine("using tairasoul.unity.common.bits;");
+		// 		sb.AppendLine("using System.CodeDom.Compiler;");
+		// 		sb.AppendLine("using System.Reflection;");
+		// 		sb.AppendLine("using System.Threading.Tasks;");
+		// 		sb.AppendLine("namespace tairasoul.unity.common.serdes;");
+		// 		sb.AppendLine($"[GeneratedCode({GeneratedCodeData})]");
+		// 		sb.AppendLine("class SerDesMapAsync {");
+		// 		if (genAsyncSer) {
+		// 			sb.AppendLine($"{Tabs()}public static async Task Serialize(object value, BitWriterAsync writer) {{");
+		// 			foreach (SerdesTypeStruct struc in structs)
+		// 			{
+		// 				string underscored = Hash(struc.qualifiedName.Replace(".", "_"));
+		// 				SerdesTypeQualifiedReference refer = new(struc.qualifiedName);
+		// 				IEnumerable<string> ser = GetSer(refer, async: false);
+		// 				sb.AppendLine($"{Tabs(2)}if (value is {struc.qualifiedName} {underscored}) {{");
+		// 				foreach (string serStr in ser)
+		// 				{
+		// 					string end = !serStr.EndsWith("{") && !serStr.EndsWith("}") && !serStr.EndsWith(";") ? ";" : "";
+		// 					sb.AppendLine($"{Tabs(3)}{serStr.Replace("%1", "writer").Replace("%2", underscored)}{end}");
+		// 				}
+		// 				sb.AppendLine($"{Tabs(3)}return;");
+		// 				sb.AppendLine($"{Tabs(2)}}}");
+		// 			}
+		// 			foreach (SerdesTypeEnum tenum in enums)
+		// 			{
+		// 				string underscored = Hash(tenum.qualifiedName.Replace(".", "_"));
+		// 				IEnumerable<string> ser = GetSer(tenum, async: false);
+		// 				sb.AppendLine($"{Tabs(2)}if (value is {tenum.qualifiedName} {underscored}) {{");
+		// 				foreach (string serStr in ser)
+		// 				{
+		// 					string end = !serStr.EndsWith("{") && !serStr.EndsWith("}") && !serStr.EndsWith(";") ? ";" : "";
+		// 					sb.AppendLine($"{Tabs(3)}{serStr.Replace("%1", "writer").Replace("%2", underscored)}{end}");
+		// 				}
+		// 				sb.AppendLine($"{Tabs(3)}return;");
+		// 				sb.AppendLine($"{Tabs(2)}}}");
+		// 			}
+		// 			sb.AppendLine($"{Tabs()}}}");
+		// 		}
+		// 		if (genAsyncDes) {
+		// 			sb.AppendLine($"{Tabs()}public static async Task<object> Deserialize(Type type, BitReaderAsync reader) {{");
+		// 			foreach (SerdesTypeStruct struc in structs)
+		// 			{
+		// 				string underscored = Hash(struc.qualifiedName.Replace(".", "_"));
+		// 				SerdesTypeQualifiedReference refer = new(struc.qualifiedName);
+		// 				List<string> des = [.. GetDes(refer, async: true)];
+		// 				des[des.Count - 1] = des[des.Count - 1].Replace("%2 =", "return");
+		// 				sb.AppendLine($"{Tabs(2)}if (type == typeof({struc.qualifiedName})) {{");
+		// 				foreach (string desStr in des)
+		// 				{
+		// 					string end = !desStr.EndsWith("{") && !desStr.EndsWith("}") && !desStr.EndsWith(";") ? ";" : "";
+		// 					sb.AppendLine($"{Tabs(3)}{desStr.Replace("%1", "reader")}{end}");
+		// 				}
+		// 				sb.AppendLine($"{Tabs(2)}}}");
+		// 			}
+		// 			foreach (SerdesTypeEnum tenum in enums)
+		// 			{
+		// 				List<string> des = [.. GetDes(tenum, async: true)];
+		// 				des[des.Count - 1] = des[des.Count - 1].Replace("%2 =", "return");
+		// 				sb.AppendLine($"{Tabs(2)}if (type == typeof({tenum.qualifiedName})) {{");
+		// 				foreach (string desStr in des)
+		// 				{
+		// 					string end = !desStr.EndsWith("{") && !desStr.EndsWith("}") && !desStr.EndsWith(";") ? ";" : "";
+		// 					sb.AppendLine($"{Tabs(3)}{desStr.Replace("%1", "reader")}{end}");
+		// 				}
+		// 				sb.AppendLine($"{Tabs(2)}}}");
+		// 			}
+		// 			sb.AppendLine($"{Tabs(2)}throw new System.Exception($\"this should not happen, could not deserialize type {{type}}\");");
+		// 			sb.AppendLine($"{Tabs()}}}");
+		// 		}
+		// 		sb.AppendLine("}");
+		// 		prodContext.AddSource("serdes/map-async.g.cs", sb.ToString());
+		// 	}
 		}
 		// {
 		// 	foreach (SerdesTypeStruct struc in structs)
@@ -1226,5 +1211,5 @@ class SerdesGen {
 		// 	sb.AppendLine("}");
 		// 	prodContext.AddSource("serdes/map.g.cs", sb.ToString());
 		// }
-	}
+	//}
 }

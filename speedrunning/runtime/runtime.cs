@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Reflection;
 using tairasoul.unity.common.speedrunning.dsl.compiler;
 using tairasoul.unity.common.speedrunning.dsl.config;

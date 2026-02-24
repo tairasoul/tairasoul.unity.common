@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace tairasoul.unity.common.datastreams;
 
-class LocalStream : Stream
+public class LocalStream : Stream
 {
 	private readonly Channel<byte[]> _channel = Channel.CreateUnbounded<byte[]>();
 	private readonly CancellationTokenSource _cts = new();

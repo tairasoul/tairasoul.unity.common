@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using tairasoul.unity.common.events;
@@ -630,6 +633,7 @@ class CompilationVisitor : IVisitor {
 
 	public void Visit(TranslationIf _if) {
 		Label Short = currentGenerator.DefineLabel();
+		Label completed = currentGenerator.DefineLabel();
 		TranslationLogicalChain logical = (TranslationLogicalChain)_if.condition;
 		Visit((TranslationComparison)logical.first, Short);
 		foreach (var (_, next) in logical.rest) {
@@ -638,11 +642,13 @@ class CompilationVisitor : IVisitor {
 		foreach (var logic in _if.body) {
 			VisitLogicNode(logic);
 		}
+		currentGenerator.Emit(OpCodes.Br, completed);
 		currentGenerator.MarkLabel(Short);
 		if (_if._else is TranslationElse _else)
 			Visit(_else);
 		else if (_if._else is TranslationElseIf _elseif)
 			Visit(_elseif);
+		currentGenerator.MarkLabel(completed);
 	}
 
 	public void Visit(TranslationElse _else) {
@@ -653,6 +659,7 @@ class CompilationVisitor : IVisitor {
 
 	public void Visit(TranslationElseIf _elseif) {
 		Label Short = currentGenerator.DefineLabel();
+		Label Completed = currentGenerator.DefineLabel();
 		TranslationLogicalChain logical = (TranslationLogicalChain)_elseif.condition;
 		Visit((TranslationComparison)logical.first, Short);
 		foreach (var (_, next) in logical.rest) {
@@ -661,11 +668,13 @@ class CompilationVisitor : IVisitor {
 		foreach (var logic in _elseif.body) {
 			VisitLogicNode(logic);
 		}
+		currentGenerator.Emit(OpCodes.Br, Completed);
 		currentGenerator.MarkLabel(Short);
 		if (_elseif._else is TranslationElse _else)
 			Visit(_else);
 		else if (_elseif._else is TranslationElseIf _elseif2)
 			Visit(_elseif2);
+		currentGenerator.MarkLabel(Completed);
 	}
 
 	public void Visit(TranslationLiteral literal) {

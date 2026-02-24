@@ -1,3 +1,4 @@
+using System;
 using System.Linq.Expressions;
 
 namespace tairasoul.unity.common.speedrunning.runtime;

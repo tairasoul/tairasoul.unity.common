@@ -3,7 +3,7 @@ using tairasoul.unity.common.networking.servers;
 
 namespace tairasoul.unity.common.networking.factories;
 
-partial class TcpUdpHybridFactory : ITransportFactory
+public partial class TcpUdpHybridFactory : ITransportFactory
 {
 	public IClient CreateReliableClient(string host, int port)
 	{

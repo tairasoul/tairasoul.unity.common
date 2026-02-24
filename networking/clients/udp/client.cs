@@ -5,18 +5,16 @@ using tairasoul.unity.common.bits;
 using tairasoul.unity.common.datastreams;
 using tairasoul.unity.common.util;
 using tairasoul.unity.common.networking.interfaces;
-using tairasoul.unity.common.networking.attributes.packets;
 using System.Threading;
+using tairasoul.unity.common.networking.registries;
+using System;
+using System.Collections.Generic;
 
 namespace tairasoul.unity.common.networking.clients;
 
-[ImplementUnreliableRead]
-[ImplementUnreliableHeaderWrite]
-[ImplementReliableRead]
-[ImplementReliableHeaderWrite]
-partial class ClientUdp : IClient {
+public partial class ClientUdp : IClient {
 	UdpClient client;
-	//Dictionary<PacketType, Action<object>[]> processors = [];
+	Dictionary<object, Action<object>[]> processors = [];
 	MemoryStream serialization = new();
 	LocalStream readStream = new();
 	public BitReaderAsync bitReader;
@@ -40,10 +38,24 @@ partial class ClientUdp : IClient {
 	public void SendPacket<T>(T packet) where T : IPacket {
 		ActionQueue.Enqueue(() =>
 		{
-			WritePacketHeader(packet, serializedWriter);
+			NetworkPacketInfo info = NetworkPacketRegistry.GetPacketInfo<T>();
+			serializedWriter.WriteInt(info.id, (uint)NetworkPacketRegistry.bitCount);
 			serializedWriter.Write(packet);
 			needsFlush = true;
 		});
+	}
+
+	async Task<(object? data, NetworkPacketInfo info)?> ReadPacket(BitReaderAsync reader) {
+		int id = await reader.ReadInt((uint)NetworkPacketRegistry.bitCount);
+		NetworkPacketInfo info = NetworkPacketRegistry.GetPacketInfo(id);
+		if (info == null) return null;
+		if (info.assocType != null) {
+			object value = await SerdeRegistry.Deserialize(reader, info.assocType);
+			return (value, info);
+		}
+		else {
+			return (null, info);
+		}
 	}
 
 	public async Task PacketReadThread()
@@ -51,10 +63,10 @@ partial class ClientUdp : IClient {
 		while (true) {
 			var pack = await ReadPacket(bitReader);
 			if (pack == null) continue;
-			if (processors.ContainsKey(pack.Value.packetType)) {
+			if (processors.ContainsKey(pack.Value.info.@enum)) {
 				ActionQueue.Enqueue(() =>
 				{
-					foreach (var processor in processors[pack.Value.packetType])
+					foreach (var processor in processors[pack.Value.info.@enum])
 						processor(pack.Value.data);
 				});
 			}
@@ -70,6 +82,16 @@ partial class ClientUdp : IClient {
 		while (true) {
 			UdpReceiveResult recv = await client.ReceiveAsync();
 			_ = readStream.WriteAsync(recv.Buffer, 0, recv.Buffer.Length);
+		}
+	}
+
+	public void RegisterPacketProcessor<T>(object type, Action<T> processor) where T : IPacket
+	{
+		if (processors.TryGetValue(type, out var list)) {
+			processors.Add(type, [.. list, (o) => processor((T)o)]);
+		}
+		else {
+			processors.Add(type, [(o) => processor((T)o)]);
 		}
 	}
 }

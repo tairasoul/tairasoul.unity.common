@@ -1,11 +1,8 @@
-#if BITWRITING_INCLUDE_SYNC
 using System;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
-#if BITWRITING_SYNC_GENERICWRITE
-using tairasoul.unity.common.serdes;
-#endif
+using System.Threading.Tasks;
 using tairasoul.unity.common.util;
 
 namespace tairasoul.unity.common.bits;
@@ -136,11 +133,9 @@ public class BitWriter(Stream stream) : IDisposable
 		currentByte = 0;
 	}
 
-#if BITWRITING_SYNC_GENERICWRITE
 	public void Write<T>(T data) {
-		SerDesMap.Serialize(data, this);
+		SerdeRegistry.Serialize<T>(this, data);
 	}
-#endif
 
 	/// <summary>
 	/// See https://github.com/microsoft/referencesource/blob/main/mscorlib/system/io/binarywriter.cs#L414
@@ -156,4 +151,3 @@ public class BitWriter(Stream stream) : IDisposable
 		WriteByte((byte)v);
 	}
 }
-#endif

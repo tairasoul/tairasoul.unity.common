@@ -1,12 +1,8 @@
-#if BITWRITING_INCLUDE_ASYNC
 using System;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
-#if BITWRITING_ASYNC_GENERICWRITE
-using tairasoul.unity.common.serdes;
-#endif
 using tairasoul.unity.common.util;
 
 namespace tairasoul.unity.common.bits;
@@ -138,11 +134,9 @@ public class BitWriterAsync(Stream stream) : IDisposable
 		currentByte = 0;
 	}
 
-#if BITWRITING_ASYNC_GENERICWRITE
 	public async Task Write<T>(T data) {
-		await SerDesMapAsync.Serialize(data, this);
+		await SerdeRegistry.Serialize<T>(this, data);
 	}
-#endif
 
 	/// <summary>
 	/// See https://github.com/microsoft/referencesource/blob/main/mscorlib/system/io/binarywriter.cs#L414
@@ -158,4 +152,3 @@ public class BitWriterAsync(Stream stream) : IDisposable
 		await WriteByte((byte)v);
 	}
 }
-#endif

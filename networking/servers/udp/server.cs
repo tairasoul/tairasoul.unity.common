@@ -10,10 +10,12 @@ using tairasoul.unity.common.util;
 using tairasoul.unity.common.networking.interfaces;
 using tairasoul.unity.common.networking.attributes.packets;
 using System.Threading;
+using tairasoul.unity.common.networking.registries;
+using System.Linq;
 
 namespace tairasoul.unity.common.networking.servers;
 
-class UdpConnection {
+public class UdpConnection {
 	public IPEndPoint addr;
 	public LocalStream readMem;
 	public MemoryStream writeMem;
@@ -22,12 +24,8 @@ class UdpConnection {
 	public bool requiresFlush = false;
 }
 
-[ImplementServerRelay]
-[ImplementUnreliableRead]
-[ImplementUnreliableHeaderWrite]
-[ImplementReliableRead]
-[ImplementReliableHeaderWrite]
-partial class ServerUdp : IServer {
+public partial class ServerUdp : IServer {
+	Dictionary<object, Action<object, ushort>[]> processors = [];
 	UdpClient client;
 	public Dictionary<ushort, UdpConnection> players = [];
 
@@ -40,6 +38,45 @@ partial class ServerUdp : IServer {
 		client.Close();
 	}
 
+	public void RegisterPacketProcessor<T>(object type, Action<T, ushort> processor) where T : IPacket
+	{
+		if (processors.TryGetValue(type, out var list)) {
+			processors.Add(type, [.. list, (a, b) => processor((T)a, b)]);
+		}
+		else {
+			processors.Add(type, [(a, b) => processor((T)a, b)]);
+		}
+	}
+
+	public void RelayHeader(object header, ushort player) {
+		NetworkPacketInfo info = NetworkPacketRegistry.GetPacketInfo(header);
+		ActionQueue.Enqueue(() =>
+		{
+			players[player].writer.WriteInt(info.id, (uint)NetworkPacketRegistry.bitCount);
+			players[player].requiresFlush = true;
+		});
+	}
+
+	public void RelayHeader(object packet, params ushort[] players) {
+		foreach (ushort player in players) {
+			RelayHeader(packet, player);
+		}
+	}
+
+	public void RelayHeaderAll(object header) {
+		foreach (ushort player in players.Keys) {
+			RelayHeader(header, player);
+		}
+	}
+
+	public void RelayHeaderExcept(object header, params ushort[] except) {
+		foreach (ushort player in players.Keys) {
+			if (!except.Contains(player)) {
+				RelayHeader(header, player);
+			}
+		}
+	}
+
 	public void RelayAll<T>(T packet) where T : IPacket {
 		foreach (ushort player in players.Keys) {
 			Relay(packet, player);
@@ -47,23 +84,35 @@ partial class ServerUdp : IServer {
 	}
 
 	public void Relay<T>(T packet, ushort player) where T : IPacket {
+		NetworkPacketInfo info = NetworkPacketRegistry.GetPacketInfo<T>();
 		ActionQueue.Enqueue(() =>
 		{
-			WritePacketHeader(packet, players[player].writer);
+			players[player].writer.WriteInt(info.id, (uint)NetworkPacketRegistry.bitCount);
 			players[player].writer.Write(packet);
 			players[player].requiresFlush = true;
 		});
 	}
 
-	public void Relay<T>(T packet, ushort[] players) where T : IPacket {
+	void Relay(object packet, ushort player) {
+		ActionQueue.Enqueue(() =>
+		{
+			NetworkPacketInfo info = NetworkPacketRegistry.GetPacketInfo(packet.GetType());
+			players[player].writer.WriteInt(info.id, (uint)NetworkPacketRegistry.bitCount);
+			if (packet != null)
+				players[player].writer.Write(packet);
+			players[player].requiresFlush = true;
+		});
+	}
+
+	public void Relay<T>(T packet, params ushort[] players) where T : IPacket {
 		foreach (ushort player in players) {
 			Relay(packet, player);
 		}
 	}
 
-	public void RelayExcept<T>(T packet, ushort player) where T : IPacket {
+	public void RelayExcept<T>(T packet, params ushort[] except) where T : IPacket {
 		foreach (ushort pl in players.Keys) {
-			if (pl != player) {
+			if (!except.Contains(pl)) {
 				Relay(packet, pl);
 			}
 		}
@@ -72,9 +121,7 @@ partial class ServerUdp : IServer {
 	public void TcpDisc(ushort id) {
 		players.Remove(id);
 	}
-
 	bool started = false;
-
 	CancellationToken ct;
 
 	public void TcpConn(IPEndPoint endPoint, ushort id) {
@@ -93,15 +140,35 @@ partial class ServerUdp : IServer {
 		}, ct);
 	}
 
+	async Task<(object? data, NetworkPacketInfo info)?> ReadPacket(BitReaderAsync reader) {
+		int id = await reader.ReadInt((uint)NetworkPacketRegistry.bitCount);
+		NetworkPacketInfo info = NetworkPacketRegistry.GetPacketInfo(id);
+		if (info == null) return null;
+		if (info.assocType != null) {
+			object value = await SerdeRegistry.Deserialize(reader, info.assocType);
+			return (value, info);
+		}
+		else {
+			return (null, info);
+		}
+	}
+
 	async Task ProcessPackets(ushort id, UdpConnection conn) {
 		while (true) {
 			var pack = await ReadPacket(conn.reader);
 			if (pack == null) continue;
-			DoServerRelay(pack.Value.data, id);
-			if (processors.ContainsKey(pack.Value.packetType)) {
+			CheckSpecialAction(pack.Value.info.@enum, conn.reader);
+			if (pack.Value.info.relay == ServerRelayType.RelayExceptSender) {
+				foreach (ushort pl in players.Keys) {
+					if (pl != id) {
+						Relay(pack.Value.data, pl);
+					}
+				}
+			}
+			if (processors.ContainsKey(pack.Value.info.@enum)) {
 				ActionQueue.Enqueue(() =>
 				{
-					foreach (var processor in processors[pack.Value.packetType])
+					foreach (var processor in processors[pack.Value.info.@enum])
 						processor(pack.Value.data, id);
 				});
 			}

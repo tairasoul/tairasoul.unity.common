@@ -10,21 +10,22 @@ using static tairasoul.unity.common.networking.util.ObjectIdUtils;
 using tairasoul.unity.common.networking.interfaces;
 using tairasoul.unity.common.networking.factories;
 using tairasoul.unity.common.networking.attributes.packets;
+using tairasoul.unity.common.networking.registries;
+using System;
 
 namespace tairasoul.unity.common.networking.layer;
 
-class Clients {
+public class Clients {
 	public IClient reliable;
 	public IClient unreliable;
 }
 
-class Servers {
+public class Servers {
 	public IServer reliable;
 	public IServer unreliable;
 }
 
-[ImplementReliabilityGet]
-partial class HostBasedP2P : INetworkLayer {
+public partial class HostBasedP2P : INetworkLayer {
 	[MemberNotNullWhen(false, nameof(clients))]
 	[MemberNotNullWhen(true, nameof(servers))]
 	public bool isHost { get; set; }
@@ -48,6 +49,18 @@ partial class HostBasedP2P : INetworkLayer {
 		else {
 			clients.reliable.Flush();
 			clients.unreliable.Flush();
+		}
+	}
+
+	public void OnPacket<T>(object type, Action<T, ushort> listener) where T : IPacket
+	{
+		if (isHost) {
+			servers.reliable.RegisterPacketProcessor(type, listener);
+			servers.unreliable.RegisterPacketProcessor(type, listener);
+		}
+		else {
+			clients.reliable.RegisterPacketProcessor<T>(type, (a) => listener(a, 0));
+			clients.unreliable.RegisterPacketProcessor<T>(type, (a) => listener(a, 0));
 		}
 	}
 
@@ -113,21 +126,39 @@ partial class HostBasedP2P : INetworkLayer {
 		return tuples;
 	}
 
+	PacketReliability GetPacketReliability<T>() where T : IPacket {
+		NetworkPacketInfo info = NetworkPacketRegistry.GetPacketInfo<T>();
+		if (info.reliability == null) {
+			throw new InvalidOperationException($"Cannot automatically determine reliability for packet {typeof(T)}.");
+		}
+		return info.reliability.Value;
+	}
+
+	PacketReliability GetPacketReliability(object header)
+	{
+		NetworkPacketInfo info = NetworkPacketRegistry.GetPacketInfo(header);
+		if (info.reliability == null)
+		{
+			throw new InvalidOperationException($"Cannot automatically determine reliability for packet {header}.");
+		}
+		return info.reliability.Value;
+	}
+
 	public void SendPacket<T>(T data, ushort id) where T : IPacket
 	{
-		PacketReliability rel = GetPacketReliability(data);
-		SendPacket(data, id, rel);
+		PacketReliability rel = GetPacketReliability<T>();
+		SendPacket(data, rel, id);
 	}
 
 	public void SendPacket<T>(T data, ushort[] ids) where T : IPacket
 	{
-		PacketReliability rel = GetPacketReliability(data);
-		SendPacket(data, ids, rel);
+		PacketReliability rel = GetPacketReliability<T>();
+		SendPacket(data, rel, ids);
 	}
 
 	public void SendPacket<T>(T data) where T : IPacket
 	{
-		PacketReliability rel = GetPacketReliability(data);
+		PacketReliability rel = GetPacketReliability<T>();
 		SendPacket(data, rel);
 	}
 
@@ -138,7 +169,7 @@ partial class HostBasedP2P : INetworkLayer {
 		return ++localCounter;
 	}
 
-	public void SendPacket<T>(T data, ushort id, PacketReliability reliability) where T : IPacket
+	public void SendPacket<T>(T data, PacketReliability reliability, ushort id) where T : IPacket
 	{
 		if (isHost)
 		{
@@ -163,7 +194,7 @@ partial class HostBasedP2P : INetworkLayer {
 		written = true;
 	}
 
-	public void SendPacket<T>(T data, ushort[] ids, PacketReliability reliability) where T : IPacket
+	public void SendPacket<T>(T data, PacketReliability reliability, ushort[] ids) where T : IPacket
 	{
 		if (isHost)
 		{
@@ -211,5 +242,83 @@ partial class HostBasedP2P : INetworkLayer {
 			}
 		}
 		written = true;
+	}
+
+	public void SendPacketHeader(object header, ushort id)
+	{
+		PacketReliability reliability = GetPacketReliability(header);
+		SendPacketHeader(header, reliability, id);
+	}
+
+	public void SendPacketHeader(object header, params ushort[] ids)
+	{
+		PacketReliability reliability = GetPacketReliability(header);
+		SendPacketHeader(header, reliability, ids);
+	}
+
+	public void SendPacketHeader(object header)
+	{
+		PacketReliability reliability = GetPacketReliability(header);
+		SendPacketHeader(header, reliability);
+	}
+
+	public void SendPacketHeader(object header, PacketReliability reliability, ushort id)
+	{
+		if (isHost) {
+			if (reliability == PacketReliability.Reliable) {
+				servers.reliable.RelayHeader(header, id);
+			}
+			else {
+				servers.unreliable.RelayHeader(header, id);
+			}
+		}
+		else {
+			if (reliability == PacketReliability.Reliable) {
+				
+			}
+			else {
+
+			}
+		}
+	}
+
+	public void SendPacketHeader(object header, PacketReliability reliability, params ushort[] ids)
+	{
+		if (isHost) {
+			if (reliability == PacketReliability.Reliable) {
+				servers.reliable.RelayHeader(header, ids);
+			}
+			else {
+				servers.unreliable.RelayHeader(header, ids);
+			}
+		}
+		else {
+			if (reliability == PacketReliability.Reliable) {
+				
+			}
+			else {
+				
+			}
+		}
+	}
+
+	public void SendPacketHeader(object header, PacketReliability reliability)
+	{
+		if (isHost) {
+			if (reliability == PacketReliability.Reliable) {
+				servers.reliable.RelayHeaderAll(header);
+			}
+			else {
+				servers.unreliable.RelayHeaderAll(header);
+			}
+		}
+		else {
+			if (reliability == PacketReliability.Reliable) {
+				
+			}
+			else {
+				
+			}
+		}
 	}
 }

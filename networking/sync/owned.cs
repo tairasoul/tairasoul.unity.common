@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace tairasoul.unity.common.networking.sync;
 
-abstract class BaseOwnedSyncComponent : MonoBehaviour {
+public abstract class BaseOwnedSyncComponent : MonoBehaviour {
 	internal static List<BaseOwnedSyncComponent> ActiveNetworked = [];
 	public ulong objectId;
 	public abstract void Synchronize();

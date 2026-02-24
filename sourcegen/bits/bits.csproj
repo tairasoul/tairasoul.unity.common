@@ -17,7 +17,6 @@
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.4.0" PrivateAssets="all" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Remove="packets/*.cs" />
     <Compile Include="../../hashing/murmur3.cs" />
   </ItemGroup>
 </Project>

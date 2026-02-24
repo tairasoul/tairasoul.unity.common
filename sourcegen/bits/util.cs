@@ -16,6 +16,6 @@ static class StringUtil {
 	}
 	
 	public static string Hash(string str) {
-    return $"hash_{Murmur3.Hash128(str)}_";
+    return $"hash_{Murmur3.Hash128String(str)}_";
 	}
 }

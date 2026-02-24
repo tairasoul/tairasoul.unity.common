@@ -3,7 +3,7 @@ using System.Reflection;
 
 namespace tairasoul.unity.common.util;
 
-static class AssemblyUtils {
+public static class AssemblyUtils {
   public static byte[] GetResourceBytes(Assembly assembly, string resource) {
     using Stream? stream = assembly.GetManifestResourceStream(resource);
     if (stream == null) return [];

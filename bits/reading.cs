@@ -1,11 +1,7 @@
-#if BITREADING_INCLUDE_SYNC
 using System;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
-#if BITREADING_SYNC_GENERICREAD
-using tairasoul.unity.common.serdes;
-#endif
 using tairasoul.unity.common.util;
 
 namespace tairasoul.unity.common.bits;
@@ -176,12 +172,9 @@ public class BitReader : IDisposable
 		return ReadString(length);
 	}
 
-#if BITREADING_SYNC_GENERICREAD
 	public T Read<T>() {
-		Type type = typeof(T);
-		return (T)SerDesMap.Deserialize(type, this);
+		return SerdeRegistry.Deserialize<T>(this);
 	}
-#endif
 
 	/// <summary>
 	/// See https://github.com/microsoft/referencesource/blob/main/mscorlib/system/io/binaryreader.cs#L582
@@ -200,4 +193,3 @@ public class BitReader : IDisposable
 		return count;
 	}
 }
-#endif

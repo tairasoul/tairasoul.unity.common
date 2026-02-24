@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace tairasoul.unity.common.util;
 
-class ActionQueue : MonoBehaviour
+public class ActionQueue : MonoBehaviour
 {
 	static ActionQueue? _instance;
 	public static ActionQueue Instance { 

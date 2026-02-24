@@ -5,7 +5,7 @@ using tairasoul.unity.common.util;
 
 namespace tairasoul.unity.common.embedded;
 
-static class EmbeddedDependencyLoader {
+public static class EmbeddedDependencyLoader {
 	public static void Init(AppDomain domain, string prefix, string[] assemblyNames) {
 		domain.AssemblyResolve += (context, name) =>
 		{

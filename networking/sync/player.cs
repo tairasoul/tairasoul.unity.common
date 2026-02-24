@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace tairasoul.unity.common.networking.sync;
 
-abstract class PlayerSyncComponent : MonoBehaviour {
+public abstract class PlayerSyncComponent : MonoBehaviour {
 	internal static List<PlayerSyncComponent> ActiveNetworked = [];
 	public static PlayerSyncComponent ours { get; internal set; }
 	public ushort player;

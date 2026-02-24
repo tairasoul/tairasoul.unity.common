@@ -3,7 +3,7 @@ using tairasoul.unity.common.networking.servers;
 
 namespace tairasoul.unity.common.networking.factories;
 
-class TcpOnlyFactory : ITransportFactory
+public class TcpOnlyFactory : ITransportFactory
 {
 	public IClient CreateReliableClient(string host, int port)
 	{

@@ -4,11 +4,15 @@ using System.Linq;
 using System.Threading.Tasks;
 using tairasoul.unity.common.networking.sync;
 
-namespace tairasoul.unity.common.networking.components;
+namespace tairasoul.unity.common.networking.registries;
 
-abstract record CreationData();
+public interface IComponentCreator {
+	public Task<BaseOwnedSyncComponent> RequestCreation(Func<CreationData, bool> predicate);
+}
 
-static class ComponentCreatorRegistry {
+public abstract record CreationData();
+
+public static class ComponentCreatorRegistry {
 	static Dictionary<Type, IComponentCreator> registeredCreators = [];
 
 	public static void Register<T>() where T : IComponentCreator, new() {
