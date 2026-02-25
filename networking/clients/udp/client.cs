@@ -35,10 +35,19 @@ public partial class ClientUdp : IClient {
 		ActionQueue.Enqueue(client.Close);
 	}
 
-	public void SendPacket<T>(T packet) where T : IPacket {
+	public void SendPacketHeader(object header) {
+		NetworkPacketInfo info = NetworkPacketRegistry.GetPacketInfo(header);
 		ActionQueue.Enqueue(() =>
 		{
-			NetworkPacketInfo info = NetworkPacketRegistry.GetPacketInfo<T>();
+			serializedWriter.WriteInt(info.id, (uint)NetworkPacketRegistry.bitCount);
+			needsFlush = true;
+		});
+	}
+
+	public void SendPacket<T>(T packet) where T : IPacket {
+		NetworkPacketInfo info = NetworkPacketRegistry.GetPacketInfo<T>();
+		ActionQueue.Enqueue(() =>
+		{
 			serializedWriter.WriteInt(info.id, (uint)NetworkPacketRegistry.bitCount);
 			serializedWriter.Write(packet);
 			needsFlush = true;

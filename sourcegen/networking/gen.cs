@@ -116,20 +116,20 @@ public class NetworkGen : IIncrementalGenerator
 					SerdesTypeStruct typeStruct = new("tairasoul.unity.common.networking.gentypes.InternalConnectPacket", "tairasoul.unity.common.networking.gentypes", ((List<SerdesTypeStructField>)[
 						new("udpPort", new SerdesTypePrimitive(PrimitiveType.Int), isPositional: true),
 						new("username", new SerdesTypePrimitive(PrimitiveType.String), isPositional: true)
-					]).ToImmutableArray(), true);
+					]).ToImmutableArray(), true, false);
 					serdesTypes.Add(typeStruct);
 				}
 				if (GetInternalCorrelation(types.Right, "IdRelay") != "") {
 					SerdesTypeStruct typeStruct = new("tairasoul.unity.common.networking.gentypes.InternalIdRelayPacket", "tairasoul.unity.common.networking.gentypes", ((List<SerdesTypeStructField>)[
 						new("playerId", new SerdesTypePrimitive(PrimitiveType.UShort), size: 12, isPositional: true)
-					]).ToImmutableArray(), true);
+					]).ToImmutableArray(), true, false);
 					serdesTypes.Add(typeStruct);
 				}
 				if (GetInternalCorrelation(types.Right, "PlayerConnected") != "") {
 					SerdesTypeStruct typeStruct = new("tairasoul.unity.common.networking.gentypes.InternalPlayerConnectedPacket", "tairasoul.unity.common.networking.gentypes", ((List<SerdesTypeStructField>)[
 						new("playerId", new SerdesTypePrimitive(PrimitiveType.UShort), size: 12, isPositional: true),
 						new("username", new SerdesTypePrimitive(PrimitiveType.String), isPositional: true)
-					]).ToImmutableArray(), true);
+					]).ToImmutableArray(), true, false);
 					serdesTypes.Add(typeStruct);
 				}
 				SerdesGen.GenerateSerDes(ctx, serdesTypes);

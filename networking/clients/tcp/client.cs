@@ -27,10 +27,19 @@ public partial class ClientTcp : IClient
 		bitWriter = new(stream);
 	}
 
-	public void SendPacket<T>(T packet) where T : IPacket {
+	public void SendPacketHeader(object header) {
+		NetworkPacketInfo info = NetworkPacketRegistry.GetPacketInfo(header);
 		ActionQueue.Enqueue(() =>
 		{
-			NetworkPacketInfo info = NetworkPacketRegistry.GetPacketInfo<T>();
+			bitWriter.WriteInt(info.id, (uint)NetworkPacketRegistry.bitCount);
+			needsFlush = true;
+		});
+	}
+
+	public void SendPacket<T>(T packet) where T : IPacket {
+		NetworkPacketInfo info = NetworkPacketRegistry.GetPacketInfo<T>();
+		ActionQueue.Enqueue(() =>
+		{
 			bitWriter.WriteInt(info.id, (uint)NetworkPacketRegistry.bitCount);
 			bitWriter.Write(packet);
 			needsFlush = true;

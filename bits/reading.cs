@@ -2,7 +2,6 @@ using System;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
-using tairasoul.unity.common.util;
 
 namespace tairasoul.unity.common.bits;
 
@@ -153,7 +152,9 @@ public class BitReader : IDisposable
 		if (bits == 32)
 		{
 			uint tmp = ReadUInt(32);
-			return CastUtil.FloatFromUint(tmp);
+			unsafe {
+				return *(float*)&tmp;
+			}
 		}
 		throw new ArgumentException($"32 bit float type cannot read from {bits} bits.", nameof(bits));
 	}

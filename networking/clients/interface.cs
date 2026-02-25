@@ -8,6 +8,7 @@ namespace tairasoul.unity.common.networking.clients;
 public partial interface IClient {
 	public void Disconnect();
 	public void Flush();
+	public void SendPacketHeader(object header);
 	public void SendPacket<T>(T packet) where T : IPacket;
 	public void RegisterPacketProcessor<T>(object type, Action<T> processor) where T : IPacket;
 	public Task ProcessPackets(CancellationToken cts);

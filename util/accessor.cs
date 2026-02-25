@@ -86,7 +86,7 @@ public static class AccessorUtil {
 	/*public static void Set<T>(object instance, Type type, string fieldName, T value) {
 		AccessorSetCacheKey key = new(type, fieldName);
 		if (CachedSetAccessors.TryGetValue(key, out var accessor)) {
-			accessor(value);
+			accessor(instance, value);
 			return;
 		}
 	}*/

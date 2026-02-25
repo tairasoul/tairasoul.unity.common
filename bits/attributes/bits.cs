@@ -19,3 +19,8 @@ public class DictionaryKeyBitSize(ushort size) : Attribute { }
 
 [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
 public class DictionaryValueBitSize(ushort size) : Attribute { }
+
+[AttributeUsage(AttributeTargets.Class)]
+class SerdeForType(Type type) : Attribute {
+	public Type type = type;
+}

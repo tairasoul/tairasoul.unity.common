@@ -6,14 +6,15 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
+using tairasoul.unity.common.attributes.bits;
 
 namespace tairasoul.unity.common.bits;
 
 record SerdeInfo(
-	Action<BitWriter, object> syncWrite,
-	Func<BitReader, object> syncRead,
-	Func<BitWriterAsync, object, Task> asyncWrite,
-	Func<BitReaderAsync, Task<object>> asyncRead
+	Action<object, BitWriter> syncWrite,
+	Delegate syncRead,
+	Func<object, BitWriterAsync, Task> asyncWrite,
+	Delegate asyncRead
 );
 
 public static class SerdeRegistry
@@ -25,12 +26,10 @@ public static class SerdeRegistry
 		foreach (Assembly asm in assemblies) {
 			var types = asm.GetTypes();
 			foreach (Type type in types) {
-				if (type.Namespace.EndsWith("serde")) {
-					var nsp = type.Namespace.Split('.');
-					var parentNs = string.Join(".", nsp.Take(nsp.Length - 1));
-					var assocTypeName = type.Name.Substring(0, type.Name.Length - 5);
-					var assocType = types.First((v) => v.Namespace == parentNs && v.Name == assocTypeName);
-					SerdeSets.TryAdd(assocType, BuildSerdeInfo(assocType, type));
+				if (type.Namespace != null && type.Namespace.EndsWith("serde")) {
+					SerdeForType? serde = type.GetCustomAttribute<SerdeForType>();
+					if (serde == null) continue;
+					SerdeSets.TryAdd(serde.type, BuildSerdeInfo(serde.type, type));
 				}
 			}
 		}
@@ -43,14 +42,17 @@ public static class SerdeRegistry
 		ParameterExpression syncReaderParam = Expression.Parameter(typeof(BitReader));
 		ParameterExpression objectParam = Expression.Parameter(typeof(object));
 		Expression convertedParam = Expression.Convert(objectParam, parentType);
-		Expression serAsync = Expression.Call(serdeType.GetMethod("SerializeAsync"), asyncWriterParam, convertedParam);
+		Expression serAsync = Expression.Call(serdeType.GetMethod("SerializeAsync"), convertedParam, asyncWriterParam);
 		Expression desAsync = Expression.Call(serdeType.GetMethod("DeserializeAsync"), asyncReaderParam);
-		Expression serSync = Expression.Call(serdeType.GetMethod("Serialize"), syncWriterParam, convertedParam);
+		Expression serSync = Expression.Call(serdeType.GetMethod("Serialize"), convertedParam, syncWriterParam);
 		Expression desSync = Expression.Call(serdeType.GetMethod("Deserialize"), syncReaderParam);
-		var serAsyncAction = Expression.Lambda<Func<BitWriterAsync, object, Task>>(serAsync, asyncWriterParam, objectParam).Compile();
-		var desAsyncAction = Expression.Lambda<Func<BitReaderAsync, Task<object>>>(desAsync, asyncReaderParam).Compile();
-		var serSyncAction = Expression.Lambda<Action<BitWriter, object>>(serSync, syncWriterParam, objectParam).Compile();
-		var desSyncAction = Expression.Lambda<Func<BitReader, object>>(desSync, syncReaderParam).Compile();
+		Type TaskType = typeof(Task<>);
+		Type desAsyncType = typeof(Func<,>).MakeGenericType(typeof(BitReaderAsync), TaskType.MakeGenericType(parentType));
+		Type desSyncType = typeof(Func<,>).MakeGenericType(typeof(BitReader), parentType);
+		var serAsyncAction = Expression.Lambda<Func<object, BitWriterAsync, Task>>(serAsync, objectParam, asyncWriterParam).Compile();
+		var desAsyncAction = Expression.Lambda(desAsyncType, desAsync, asyncReaderParam).Compile();
+		var serSyncAction = Expression.Lambda<Action<object, BitWriter>>(serSync, objectParam, syncWriterParam).Compile();
+		var desSyncAction = Expression.Lambda(desSyncType, desSync, syncReaderParam).Compile();
 		return new(serSyncAction, desSyncAction, serAsyncAction, desAsyncAction);
 	}
 
@@ -64,7 +66,7 @@ public static class SerdeRegistry
 		if (!SerdeSets.TryGetValue(dataType, out SerdeInfo serde)) {
 			throw new KeyNotFoundException($"Type {dataType} is not a ser/de type.");
 		}
-		serde.syncWrite(writer, data);
+		serde.syncWrite(data, writer);
 	}
 
 	public static async Task Serialize<T>(BitWriterAsync writer, T data) {
@@ -77,7 +79,7 @@ public static class SerdeRegistry
 		if (!SerdeSets.TryGetValue(dataType, out SerdeInfo serde)) {
 			throw new KeyNotFoundException($"Type {dataType} is not a ser/de type.");
 		}
-		await serde.asyncWrite(writer, data);
+		await serde.asyncWrite(data, writer);
 	}
 
 	public static T Deserialize<T>(BitReader reader) {
@@ -88,7 +90,7 @@ public static class SerdeRegistry
 		if (!SerdeSets.TryGetValue(dataType, out SerdeInfo serde)) {
 			throw new KeyNotFoundException($"Type {dataType} is not a ser/de type.");
 		}
-		return serde.syncRead(reader);
+		return serde.syncRead.DynamicInvoke(reader)!;
 	}
 
 	public static async Task<T> Deserialize<T>(BitReaderAsync reader) {
@@ -99,6 +101,6 @@ public static class SerdeRegistry
 		if (!SerdeSets.TryGetValue(dataType, out SerdeInfo serde)) {
 			throw new KeyNotFoundException($"Type {dataType} is not a ser/de type.");
 		}
-		return await serde.asyncRead(reader);
+		return await (Task<object>)serde.asyncRead.DynamicInvoke(reader);
 	}
 }

@@ -3,7 +3,6 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
-using tairasoul.unity.common.util;
 
 namespace tairasoul.unity.common.bits;
 
@@ -108,7 +107,10 @@ public class BitWriterAsync(Stream stream) : IDisposable
 
 	public async Task WriteFloat(float value, uint bits = 32) {
 		if (bits == 32) {
-			uint tmp = CastUtil.UintFromFloat(value);
+			uint tmp;
+			unsafe {
+				tmp = *(uint*)&value;
+			}
 			await WriteUInt(tmp, bits);
 			return;
 		}

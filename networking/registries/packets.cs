@@ -43,9 +43,7 @@ public static class NetworkPacketRegistry {
 								foundUnreliable = true;
 							}
 						}
-						if (foundReliable && foundUnreliable) {
-
-						}
+						if (foundReliable && foundUnreliable) {}
 						else if (foundReliable) {
 							rel = PacketReliability.Reliable;
 						}

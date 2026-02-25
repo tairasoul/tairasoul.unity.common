@@ -29,7 +29,7 @@ enum PrimitiveType {
 abstract record SerdesType();
 record SerdesTypeVariant(ImmutableArray<SerdesType> variants) : SerdesType;
 record SerdesTypeStructField(string name, SerdesType type, bool useReflection = false, uint? size = null, bool isPositional = false, bool isNullable = false) : SerdesType;
-record SerdesTypeStruct(string qualifiedName, string ns, ImmutableArray<SerdesTypeStructField> fields, bool isRecord) : SerdesType;
+record SerdesTypeStruct(string qualifiedName, string ns, ImmutableArray<SerdesTypeStructField> fields, bool isRecord, bool @public) : SerdesType;
 record SerdesTypeArray(SerdesType elementType, uint? lengthSize = null, uint? valueSize = null, bool elementNullable = false) : SerdesType;
 record SerdesTypeDictionary(SerdesType key, SerdesType value, uint? lengthSize = null, uint? keySize = null, uint? valueSize = null, bool valueNullable = false) : SerdesType;
 record SerdesTypePrimitive(PrimitiveType primitive) : SerdesType;
@@ -340,7 +340,7 @@ class SerdesGen {
 				}
 			}
 		}
-		return new SerdesTypeStruct(symbol.ToDisplayString(format), symbol.ContainingNamespace.ToDisplayString(format), fields.ToImmutableArray(), symbol.IsRecord);
+		return new SerdesTypeStruct(symbol.ToDisplayString(format), symbol.ContainingNamespace.ToDisplayString(format), fields.ToImmutableArray(), symbol.IsRecord, symbol.DeclaredAccessibility == Accessibility.Public);
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -833,6 +833,7 @@ class SerdesGen {
 				{
 					if (field.useReflection)
 					{
+						// needs to be altered to work with properties too
 						if (typesAdded.Add(fieldStr))
 							structLines.Add($"Type {Hash($"{fieldStr}Type")} = typeof({GetQualifiedName(typeStruct)});");
 						if (field.isNullable)
@@ -951,13 +952,15 @@ class SerdesGen {
 			StringBuilder sb = new();
 			sb.AppendLine("using System;");
 			sb.AppendLine("using tairasoul.unity.common.bits;");
+			sb.AppendLine("using tairasoul.unity.common.attributes.bits;");
 			sb.AppendLine("using System.CodeDom.Compiler;");
 			sb.AppendLine("using System.Reflection;");
 			sb.AppendLine("using System.Threading.Tasks;");
 			sb.AppendLine("using System.Runtime.Serialization;");
-			sb.AppendLine($"namespace {ns}.serde;");
+			sb.AppendLine($"namespace {(ns != "" ? ns + "." : "")}serde;");
 			sb.AppendLine($"[GeneratedCode({GeneratedCodeData})]");
-			sb.AppendLine($"static class {name}Serde {{");
+			sb.AppendLine($"[SerdeForType(typeof({struc.qualifiedName}))]");
+			sb.AppendLine($"{(struc.@public ? "public " : "")}static class {name}Serde {{");
 			{
 				sb.AppendLine($"{Tabs()}public static async Task SerializeAsync({struc.qualifiedName} {hashed}, BitWriterAsync writer) {{");
 				IEnumerable<string> serLines = GetSer(struc, async: true);
@@ -1003,7 +1006,7 @@ class SerdesGen {
 				sb.AppendLine($"{Tabs()}}}");
 			}
 			sb.AppendLine($"}}");
-			prodContext.AddSource($"serde/{struc.qualifiedName.Replace(".", "_")}-serde.g.cs", sb.ToString());
+			prodContext.AddSource($"serde/{struc.qualifiedName.Replace(".", "_")}.g.cs", sb.ToString());
 		}
 	}
 }
