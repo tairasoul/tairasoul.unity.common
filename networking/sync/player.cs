@@ -6,7 +6,7 @@ namespace tairasoul.unity.common.networking.sync;
 
 public abstract class PlayerSyncComponent : MonoBehaviour {
 	internal static Dictionary<ushort, PlayerSyncComponent> ActiveNetworked = [];
-	public static PlayerSyncComponent ours { get; internal set; }
+	public static List<PlayerSyncComponent> ours = [];
 	public ushort player;
 	public abstract void Synchronize();
 	public abstract void Synchronize<T>(T packet) where T : IPacket;

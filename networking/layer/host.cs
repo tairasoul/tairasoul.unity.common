@@ -91,7 +91,8 @@ public partial class HostBasedP2P : INetworkLayer {
 
 	public void Synchronize()
 	{
-		PlayerSyncComponent.ours?.Synchronize();
+		foreach (var ours in PlayerSyncComponent.ours)
+			ours.Synchronize();
 		foreach (var pair in BaseOwnedSyncComponent.ActiveNetworked.Where(c => ExtractPlayerID(c.Key) == playerId))
 			pair.Value.Synchronize();
 	}

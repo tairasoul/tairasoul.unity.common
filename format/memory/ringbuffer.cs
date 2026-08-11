@@ -163,7 +163,10 @@ public class RingBuffer : IDisposable
 	{
 		byte[] buffer = ArrayPool<byte>.Shared.Rent(bytes);
 		int read = stream.Read(buffer, 0, bytes);
-		if (read == 0) return;
+		if (read == 0) {
+			ArrayPool<byte>.Shared.Return(buffer);
+			return;
+		}
 		Write(buffer, read);
 		ArrayPool<byte>.Shared.Return(buffer);
 	}
@@ -173,7 +176,10 @@ public class RingBuffer : IDisposable
 	{
 		byte[] buffer = ArrayPool<byte>.Shared.Rent(bytes);
 		int read = await stream.ReadAsync(buffer, 0, bytes).ConfigureAwait(false);
-		if (read == 0) return;
+		if (read == 0) {
+			ArrayPool<byte>.Shared.Return(buffer);
+			return;
+		}
 		Write(buffer, read);
 		ArrayPool<byte>.Shared.Return(buffer);
 	}
@@ -189,14 +195,6 @@ unsafe struct RingBufferMemory(int length) : IDisposable
 		get => new(backing, length);
 	}
 	public readonly byte* BackingPointer => backing;
-	// {
-	// 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	// 	get => backing;
-	// }
-	// {
-	// 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	// 	get => copy;
-	// }
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public void Dispose()
