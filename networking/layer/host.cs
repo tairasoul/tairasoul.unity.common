@@ -9,7 +9,6 @@ using tairasoul.unity.common.networking.sync;
 using static tairasoul.unity.common.networking.util.ObjectIdUtils;
 using tairasoul.unity.common.networking.interfaces;
 using tairasoul.unity.common.networking.factories;
-using tairasoul.unity.common.networking.attributes.packets;
 using tairasoul.unity.common.networking.registries;
 using System;
 
@@ -92,9 +91,9 @@ public partial class HostBasedP2P : INetworkLayer {
 
 	public void Synchronize()
 	{
-		foreach (BaseOwnedSyncComponent c in BaseOwnedSyncComponent.ActiveNetworked.Where(c => ExtractPlayerID(c.objectId) == playerId))
-			c.Synchronize();
 		PlayerSyncComponent.ours?.Synchronize();
+		foreach (var pair in BaseOwnedSyncComponent.ActiveNetworked.Where(c => ExtractPlayerID(c.Key) == playerId))
+			pair.Value.Synchronize();
 	}
 
 	public void Disconnect()
@@ -119,7 +118,7 @@ public partial class HostBasedP2P : INetworkLayer {
 
 	public (string username, ushort id)[] GetPlayers()
 	{
-		(string username, ushort id)[] tuples = [(username, 1)];
+		(string username, ushort id)[] tuples = [(username, 0)];
 		foreach (var pair in players) {
 			tuples = [.. tuples, (pair.Value, pair.Key)];
 		}
@@ -274,10 +273,10 @@ public partial class HostBasedP2P : INetworkLayer {
 		}
 		else {
 			if (reliability == PacketReliability.Reliable) {
-				
+				clients.reliable.SendPacketHeader(header);
 			}
 			else {
-
+				clients.unreliable.SendPacketHeader(header);
 			}
 		}
 	}
@@ -294,10 +293,10 @@ public partial class HostBasedP2P : INetworkLayer {
 		}
 		else {
 			if (reliability == PacketReliability.Reliable) {
-				
+				clients.reliable.SendPacketHeader(header);
 			}
 			else {
-				
+				clients.unreliable.SendPacketHeader(header);
 			}
 		}
 	}
@@ -314,10 +313,10 @@ public partial class HostBasedP2P : INetworkLayer {
 		}
 		else {
 			if (reliability == PacketReliability.Reliable) {
-				
+				clients.reliable.SendPacketHeader(header);
 			}
 			else {
-				
+				clients.unreliable.SendPacketHeader(header);
 			}
 		}
 	}

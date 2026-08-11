@@ -4,28 +4,28 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
-using tairasoul.unity.common.bits;
 using tairasoul.unity.common.util;
 using tairasoul.unity.common.networking.interfaces;
 using tairasoul.unity.common.networking.attributes.packets;
 using System.Threading;
 using tairasoul.unity.common.networking.registries;
 using System.Linq;
+using tairasoul.unity.common.format;
 
 namespace tairasoul.unity.common.networking.servers;
 
 public class TcpConnection {
 	public TcpClient client;
 	public Stream stream;
-	public BitReaderAsync reader;
-	public BitWriter writer;
+	public FormatReader reader;
+	public FormatWriter writer;
 	public bool needsFlush = false;
 }
 
 public partial class ServerTcp : IServer {
 	Dictionary<object, Action<object, ushort>[]> processors = [];
 	TcpListener listener;
-	ushort currentPlayerIndex = 2;
+	ushort currentPlayerIndex = 1;
 	public Dictionary<ushort, TcpConnection> players = [];
 	//Dictionary<PacketType, Action<object, ushort>[]> processors = [];
 	Action<object, ushort> onConn = (_, _) => {};
@@ -54,7 +54,7 @@ public partial class ServerTcp : IServer {
 		NetworkPacketInfo info = NetworkPacketRegistry.GetPacketInfo(header);
 		ActionQueue.Enqueue(() =>
 		{
-			players[player].writer.WriteInt(info.id, (uint)NetworkPacketRegistry.bitCount);
+			players[player].writer.Write(info.id);
 			players[player].needsFlush = true;
 		});
 	}
@@ -83,7 +83,7 @@ public partial class ServerTcp : IServer {
 		NetworkPacketInfo info = NetworkPacketRegistry.GetPacketInfo<T>();
     ActionQueue.Enqueue(() =>
     {
-			players[player].writer.WriteInt(info.id, (uint)NetworkPacketRegistry.bitCount);
+			players[player].writer.Write(info.id);
 			players[player].writer.Write(packet);
 			players[player].needsFlush = true;
     });
@@ -111,12 +111,12 @@ public partial class ServerTcp : IServer {
 
 	bool started = false;
 
-	async Task<(object? data, NetworkPacketInfo info)?> ReadPacket(BitReaderAsync reader) {
-		int id = await reader.ReadInt((uint)NetworkPacketRegistry.bitCount);
+	async Task<(object? data, NetworkPacketInfo info)?> ReadPacket(FormatReader reader) {
+		uint id = await reader.ReadUIntAsync();
 		NetworkPacketInfo info = NetworkPacketRegistry.GetPacketInfo(id);
 		if (info == null) return null;
 		if (info.assocType != null) {
-			object value = await SerdeRegistry.Deserialize(reader, info.assocType);
+			object value = await FormatRegistry.DeserializeAsync(info.assocType, reader);
 			return (value, info);
 		}
 		else {
@@ -154,8 +154,8 @@ public partial class ServerTcp : IServer {
 						client = socket,
 						stream = socket.GetStream()
 					};
-					connection.reader = new(connection.stream);
-					connection.writer = new(connection.stream);
+					connection.reader = new(connection.stream, 4096);
+					connection.writer = new(4096*2);
 					players[currentPlayerIndex] = connection;
 					onConn(connection, currentPlayerIndex);
 					ConnAdded(socket, currentPlayerIndex);

@@ -7,28 +7,28 @@ using UnityEngine;
 namespace tairasoul.unity.common.networking.sync;
 
 public abstract class BaseOwnedSyncComponent : MonoBehaviour {
-	internal static List<BaseOwnedSyncComponent> ActiveNetworked = [];
+	internal static Dictionary<ulong, BaseOwnedSyncComponent> ActiveNetworked = [];
 	public ulong objectId;
 	public abstract void Synchronize();
 	public abstract void Synchronize<T>(T packet) where T : IPacket;
-	public void Start() {
-		if (!ActiveNetworked.Contains(this))
-			ActiveNetworked.Add(this);
+	public virtual void Start() {
+		if (!ActiveNetworked.ContainsKey(objectId))
+			ActiveNetworked.Add(objectId, this);
 	}
 
-	public void OnDestroy() {
-		if (ActiveNetworked.Contains(this))
-			ActiveNetworked.Remove(this);
+	public virtual void OnDestroy() {
+		if (ActiveNetworked.ContainsKey(objectId))
+			ActiveNetworked.Remove(objectId);
 	}
 
-	public void OnEnable() {
-		if (!ActiveNetworked.Contains(this))
-			ActiveNetworked.Add(this);
+	public virtual void OnEnable() {
+		if (!ActiveNetworked.ContainsKey(objectId))
+			ActiveNetworked.Add(objectId, this);
 	}
 
-	public void OnDisable()
+	public virtual void OnDisable()
 	{
-		if (ActiveNetworked.Contains(this))
-			ActiveNetworked.Remove(this);
+		if (ActiveNetworked.ContainsKey(objectId))
+			ActiveNetworked.Remove(objectId);
 	}
 }

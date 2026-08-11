@@ -1,33 +1,38 @@
 using System;
-using System.Diagnostics;
-using System.Collections.Immutable;
-using System.Linq;
-using Microsoft.CodeAnalysis;
 using System.Collections.Generic;
+using System.Diagnostics;
+using Microsoft.CodeAnalysis;
 
-namespace tairasoul.unity.common.sourcegen.bits;
-
-// sourcegen for generic serdes in bitreader & writer
-// supports async and sync variants for both
+namespace tairasoul.unity.common.sourcegen.format;
 
 [Generator]
-public class BitSerDes : IIncrementalGenerator
+public class FormatGen : IIncrementalGenerator
 {
+	internal static readonly SymbolDisplayFormat format = new(
+		globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Omitted,
+		typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces
+	);
+
 	public void Initialize(IncrementalGeneratorInitializationContext context)
 	{
+		// while (!Debugger.IsAttached) {
+		// 	Debugger.Launch();
+		// }
+		// Debugger.Break();
 		var types = context.SyntaxProvider.CreateSyntaxProvider(
-			predicate: (node, _) => SerdesGen.Predicate(node),
-			transform: (ctx, ct) => SerdesGen.Transform(ctx.Node, ctx.SemanticModel, ct)
+			predicate: (node, _) => Generator.Predicate(node),
+			transform: (ctx, ct) => Generator.Transform(ctx.Node, ctx.SemanticModel, ct)
 		);
 
 		var collected = types.SelectMany((array, ct) => array).Where(c => c is not null).Collect();
+
 		context.RegisterSourceOutput(collected, (ctx, types) =>
 		{
 			try {
-				List<SerdesType> serdesTypes = [];
+				List<FormatItem> serdesTypes = [];
 				HashSet<string> encountered = [];
-				foreach (SerdesType type in types) {
-					if (type is SerdesTypeStruct str) {
+				foreach (FormatItem type in types) {
+					if (type is FormatStruct str) {
 						if (encountered.Add(str.qualifiedName))
 							serdesTypes.Add(str);
 					}
@@ -35,7 +40,7 @@ public class BitSerDes : IIncrementalGenerator
 						serdesTypes.Add(type!);
 					}
 				}
-				SerdesGen.GenerateSerDes(ctx, serdesTypes);
+				Generator.Generate(ctx, serdesTypes);
 			}
 			catch (Exception ex)
 			{

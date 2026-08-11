@@ -16,16 +16,17 @@ public static class EventBus
 {
 	static ConcurrentDictionary<EventID, List<EventListener>> listeners = [];
 
-	public static void Listen<T>(T eventId, string listenerId, Action<EventData> listener)
+	public static void Listen<T, C>(T eventId, string listenerId, Action<C> listener)
 		where T : EventID
+		where C : EventData
 	{
 		if (listeners.TryGetValue(eventId, out var list))
 		{
-			list.Add(new(listenerId, listener));
+			list.Add(new(listenerId, (v) => listener((C)v)));
 		}
 		else
 		{
-			listeners[eventId] = [new(listenerId, listener)];
+			listeners[eventId] = [new(listenerId, (v) => listener((C)v))];
 		}
 	}
 
@@ -55,11 +56,11 @@ public static class EventBus
 	{
 		string listenerId = Murmur3.Hash128String($"{DateTime.Now}_autoListenerWaitFor");
 		TaskCompletionSource<H> tcs = new();
-		Listen(eventId, listenerId, ed =>
+		Listen<T, H>(eventId, listenerId, ed =>
 		{
-			if (predicate((H)ed))
+			if (predicate(ed))
 			{
-				tcs.SetResult((H)ed);
+				tcs.SetResult(ed);
 				StopListening(eventId, listenerId);
 			}
 		});

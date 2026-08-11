@@ -8,9 +8,9 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using sdi = System.Collections.Immutable.ImmutableArray<tairasoul.unity.common.sourcegen.networking.SymbolData>;
 
-// sourcegen for networking layer & as a consequence also for the bit serdes
+// sourcegen for networking layer & as a consequence also for the format serdes
 // automatically creates client & server deserialization steps for specific packet types
-// only supports synchronous writer & asynchronous reader here, main bit serdes sourcegen supports both
+// networked aspects use sync writer and async reader
 
 namespace tairasoul.unity.common.sourcegen.networking;
 
@@ -94,17 +94,41 @@ public class NetworkGen : IIncrementalGenerator
 			}
 		});
 
-		var serdes = context.SyntaxProvider.CreateSyntaxProvider((node, Node_) => SerdesGen.Predicate(node), (synt, ct) => SerdesGen.Transform(synt.Node, synt.SemanticModel, ct));
+		var serdes = context.SyntaxProvider.CreateSyntaxProvider((node, Node_) => FormatGen.Predicate(node), (synt, ct) => FormatGen.Transform(synt.Node, synt.SemanticModel, ct));
+
+		var correlatesSerdes = context.SyntaxProvider.ForAttributeWithMetadataName("tairasoul.unity.common.networking.attributes.packets.CorrelatesTo", (_, _) => true, (ctx, ct) =>
+		{
+			// IFieldSymbol symbol = (IFieldSymbol)ctx.TargetSymbol;
+			var attribute = ctx.Attributes.First();
+			var syntax = (AttributeSyntax)attribute.ApplicationSyntaxReference!.GetSyntax();
+			var firstArg = (TypeOfExpressionSyntax)syntax.ArgumentList!.Arguments.First().Expression;
+			var synRef = firstArg.Type.GetReference();
+			SemanticModel model = ctx.SemanticModel;
+			var synNode = synRef.GetSyntax(ct);
+			return FormatGen.TransformUnchecked(synNode, model, ct);
+			// firstArg.
+			// var attributes = symbol.GetAttributes();
+			// foreach (var attr in attributes) {
+			// 	if (attr.AttributeClass != null && attr.AttributeClass.MetadataName == "tairasoul.unity.common.networking.attributes.packets.CorrelatesTo") {
+			// 		var type = attr.ConstructorArguments.First();
+			// 		var value = (Type)type.Value!;
+
+			// 	}
+			// }
+		});
+
+		var csC = correlatesSerdes.SelectMany((array, ct) => array).Where(c => c is not null).Collect();
 
 		var sc = serdes.SelectMany((array, ct) => array).Where(c => c is not null).Collect();
 
-		context.RegisterSourceOutput(sc.Combine(icorrelatesC), (ctx, types) =>
+		context.RegisterSourceOutput(sc.Combine(csC).Combine(icorrelatesC), (ctx, types) =>
 		{
 			try {
-				List<SerdesType> serdesTypes = [];
+				List<FormatItem> serdesTypes = [];
 				HashSet<string> encountered = [];
-				foreach (SerdesType type in types.Left!) {
-					if (type is SerdesTypeStruct str) {
+				FormatItem[] combined = [.. types.Left.Left!, .. types.Left.Right!];
+				foreach (FormatItem type in combined) {
+					if (type is FormatStruct str) {
 						if (encountered.Add(str.qualifiedName))
 							serdesTypes.Add(str);
 					}
@@ -113,26 +137,26 @@ public class NetworkGen : IIncrementalGenerator
 					}
 				}
 				if (GetInternalCorrelation(types.Right, "Connect") != "") {
-					SerdesTypeStruct typeStruct = new("tairasoul.unity.common.networking.gentypes.InternalConnectPacket", "tairasoul.unity.common.networking.gentypes", ((List<SerdesTypeStructField>)[
-						new("udpPort", new SerdesTypePrimitive(PrimitiveType.Int), isPositional: true),
-						new("username", new SerdesTypePrimitive(PrimitiveType.String), isPositional: true)
-					]).ToImmutableArray(), true, false);
+					FormatStruct typeStruct = new("tairasoul.unity.common.networking.gentypes.InternalConnectPacket", "tairasoul.unity.common.networking.gentypes", ((List<FormatStructField>)[
+						new("udpPort", new FormatPrimitive(Primitive.Int), false, true, false),
+						new("username", new FormatPrimitive(Primitive.String), false, true, false)
+					]).ToImmutableArray(), true, false, false, false);
 					serdesTypes.Add(typeStruct);
 				}
 				if (GetInternalCorrelation(types.Right, "IdRelay") != "") {
-					SerdesTypeStruct typeStruct = new("tairasoul.unity.common.networking.gentypes.InternalIdRelayPacket", "tairasoul.unity.common.networking.gentypes", ((List<SerdesTypeStructField>)[
-						new("playerId", new SerdesTypePrimitive(PrimitiveType.UShort), size: 12, isPositional: true)
-					]).ToImmutableArray(), true, false);
+					FormatStruct typeStruct = new("tairasoul.unity.common.networking.gentypes.InternalIdRelayPacket", "tairasoul.unity.common.networking.gentypes", ((List<FormatStructField>)[
+						new("playerId", new FormatPrimitive(Primitive.UShort), false, true, false)
+					]).ToImmutableArray(), true, false, false, false);
 					serdesTypes.Add(typeStruct);
 				}
 				if (GetInternalCorrelation(types.Right, "PlayerConnected") != "") {
-					SerdesTypeStruct typeStruct = new("tairasoul.unity.common.networking.gentypes.InternalPlayerConnectedPacket", "tairasoul.unity.common.networking.gentypes", ((List<SerdesTypeStructField>)[
-						new("playerId", new SerdesTypePrimitive(PrimitiveType.UShort), size: 12, isPositional: true),
-						new("username", new SerdesTypePrimitive(PrimitiveType.String), isPositional: true)
-					]).ToImmutableArray(), true, false);
+					FormatStruct typeStruct = new("tairasoul.unity.common.networking.gentypes.InternalPlayerConnectedPacket", "tairasoul.unity.common.networking.gentypes", ((List<FormatStructField>)[
+						new("playerId", new FormatPrimitive(Primitive.UShort), false, true, false),
+						new("username", new FormatPrimitive(Primitive.String), false, true, false)
+					]).ToImmutableArray(), true, false, false, false);
 					serdesTypes.Add(typeStruct);
 				}
-				SerdesGen.GenerateSerDes(ctx, serdesTypes);
+				FormatGen.Generate(ctx, serdesTypes);
 			}
 			catch (Exception ex)
 			{

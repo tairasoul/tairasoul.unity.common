@@ -1,0 +1,39 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Condition="$(IncludeAccessorFind) != 'false'">
+    <DefineConstants>$(DefineConstants);ACCESSOR_INCLUDE_FINDFUNC</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$(NativeMemory) == 'true'">
+    <DefineConstants>$(DefineConstants);NATIVE_MEMORY</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$(UnityEnvironment) == 'true'">
+    <DefineConstants>$(DefineConstants);UNITY_ENVIRONMENT</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)../util/accessor.cs"/>
+    <Compile Include="$(MSBuildThisFileDirectory)../util/action_queue.cs" Condition="$(IncludeActionQueue) != 'false'"/>
+    <Compile Include="$(MSBuildThisFileDirectory)../util/assembly.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../util/casts.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../util/memory.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../util/unmanaged.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../util/unsafe.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Fody" Version="6.9.3" PrivateAssets="all"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <WeaverFiles Include="$(MsBuildThisFileDirectory)../weavers/CustomUnsafeWeaver.Fody/bin/$(Configuration)/netstandard2.0/CustomUnsafeWeaver.Fody.dll" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <WeaverConfiguration>
+      <Weavers>
+        <CustomUnsafeWeaver />
+      </Weavers>
+    </WeaverConfiguration>
+  </PropertyGroup>
+</Project>

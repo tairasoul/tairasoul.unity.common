@@ -4,7 +4,6 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
-using tairasoul.unity.common.bits;
 using tairasoul.unity.common.datastreams;
 using tairasoul.unity.common.util;
 using tairasoul.unity.common.networking.interfaces;
@@ -12,15 +11,15 @@ using tairasoul.unity.common.networking.attributes.packets;
 using System.Threading;
 using tairasoul.unity.common.networking.registries;
 using System.Linq;
+using tairasoul.unity.common.format;
 
 namespace tairasoul.unity.common.networking.servers;
 
 public class UdpConnection {
 	public IPEndPoint addr;
 	public LocalStream readMem;
-	public MemoryStream writeMem;
-	public BitReaderAsync reader;
-	public BitWriter writer;
+	public FormatReader reader;
+	public FormatWriter writer;
 	public bool requiresFlush = false;
 }
 
@@ -52,7 +51,7 @@ public partial class ServerUdp : IServer {
 		NetworkPacketInfo info = NetworkPacketRegistry.GetPacketInfo(header);
 		ActionQueue.Enqueue(() =>
 		{
-			players[player].writer.WriteInt(info.id, (uint)NetworkPacketRegistry.bitCount);
+			players[player].writer.Write(info.id);
 			players[player].requiresFlush = true;
 		});
 	}
@@ -87,17 +86,17 @@ public partial class ServerUdp : IServer {
 		NetworkPacketInfo info = NetworkPacketRegistry.GetPacketInfo<T>();
 		ActionQueue.Enqueue(() =>
 		{
-			players[player].writer.WriteInt(info.id, (uint)NetworkPacketRegistry.bitCount);
+			players[player].writer.Write(info.id);
 			players[player].writer.Write(packet);
 			players[player].requiresFlush = true;
 		});
 	}
 
 	void Relay(object packet, ushort player) {
+		NetworkPacketInfo info = NetworkPacketRegistry.GetPacketInfo(packet.GetType());
 		ActionQueue.Enqueue(() =>
 		{
-			NetworkPacketInfo info = NetworkPacketRegistry.GetPacketInfo(packet.GetType());
-			players[player].writer.WriteInt(info.id, (uint)NetworkPacketRegistry.bitCount);
+			players[player].writer.Write(info.id);
 			if (packet != null)
 				players[player].writer.Write(packet);
 			players[player].requiresFlush = true;
@@ -130,22 +129,21 @@ public partial class ServerUdp : IServer {
 			UdpConnection conn = new()
 			{
 				addr = endPoint,
-				writeMem = new(),
 				readMem = new()
 			};
-			conn.reader = new(conn.readMem);
-			conn.writer = new(conn.writeMem);
+			conn.reader = new(conn.readMem, 4096);
+			conn.writer = new(4096*2);
 			players[id] = conn;
 			Task.Run(async () => await ProcessPackets(id, conn), ct);
 		}, ct);
 	}
 
-	async Task<(object? data, NetworkPacketInfo info)?> ReadPacket(BitReaderAsync reader) {
-		int id = await reader.ReadInt((uint)NetworkPacketRegistry.bitCount);
+	async Task<(object? data, NetworkPacketInfo info)?> ReadPacket(FormatReader reader) {
+		uint id = await reader.ReadUIntAsync();
 		NetworkPacketInfo info = NetworkPacketRegistry.GetPacketInfo(id);
 		if (info == null) return null;
 		if (info.assocType != null) {
-			object value = await SerdeRegistry.Deserialize(reader, info.assocType);
+			object value = await FormatRegistry.DeserializeAsync(info.assocType, reader);
 			return (value, info);
 		}
 		else {

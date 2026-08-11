@@ -1,0 +1,19 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <DefineConstants Condition="$(IsUnityEnvironment) != 'false'">$(DefineConstants);UNITY_ENVIRONMENT</DefineConstants>
+    <DefineConstants Condition="$(NativeMemory) == 'true'">$(DefineConstants);NATIVE_MEMORY</DefineConstants>
+    <DefineConstants Condition="$(HarmonyEnvironment) == 'true'">$(DefineConstants);HARMONY_ENVIRONMENT</DefineConstants>
+    <DefineConstants Condition="$(MonoModEnvironment) == 'true'">$(DefineConstants);MONOMOD_ENVIRONMENT</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)../format/il/monomod.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../format/il/harmony.cs" />
+    <!-- <Compile Include="$(MSBuildThisFileDirectory)../format/memory/operations.cs" /> -->
+    <Compile Include="$(MSBuildThisFileDirectory)../format/memory/ringbuffer.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../format/memory/expandable.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../format/attributes.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../format/reader.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../format/registry.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../format/writer.cs" />
+  </ItemGroup>
+</Project>

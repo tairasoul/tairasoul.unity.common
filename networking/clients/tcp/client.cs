@@ -1,6 +1,5 @@
 using System.IO;
 using System.Net.Sockets;
-using tairasoul.unity.common.bits;
 using tairasoul.unity.common.util;
 using tairasoul.unity.common.networking.interfaces;
 using System.Threading.Tasks;
@@ -8,6 +7,8 @@ using System.Threading;
 using tairasoul.unity.common.networking.registries;
 using System.Collections.Generic;
 using System;
+using System.Reflection.Emit;
+using tairasoul.unity.common.format;
 
 namespace tairasoul.unity.common.networking.clients;
 
@@ -16,22 +17,22 @@ public partial class ClientTcp : IClient
 	TcpClient client;
 	Stream stream;
 	Dictionary<object, Action<object>[]> processors = [];
-	public BitReaderAsync bitReader;
-	BitWriter bitWriter;
+	public FormatReader reader;
+	FormatWriter writer;
 	bool needsFlush = false;
 	public ClientTcp(string host, int port) {
 		client = new(host, port);
 		client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
 		stream = client.GetStream();
-		bitReader = new(stream);
-		bitWriter = new(stream);
+		reader = new(stream, 4096);
+		writer = new(4096*2);
 	}
 
 	public void SendPacketHeader(object header) {
 		NetworkPacketInfo info = NetworkPacketRegistry.GetPacketInfo(header);
 		ActionQueue.Enqueue(() =>
 		{
-			bitWriter.WriteInt(info.id, (uint)NetworkPacketRegistry.bitCount);
+			writer.Write(info.id);
 			needsFlush = true;
 		});
 	}
@@ -40,20 +41,20 @@ public partial class ClientTcp : IClient
 		NetworkPacketInfo info = NetworkPacketRegistry.GetPacketInfo<T>();
 		ActionQueue.Enqueue(() =>
 		{
-			bitWriter.WriteInt(info.id, (uint)NetworkPacketRegistry.bitCount);
-			bitWriter.Write(packet);
+			writer.Write(info.id);
+			writer.Write(packet);
 			needsFlush = true;
 		});
 	}
 
 	bool started = false;
 
-	async Task<(object? data, NetworkPacketInfo info)?> ReadPacket(BitReaderAsync reader) {
-		int id = await reader.ReadInt((uint)NetworkPacketRegistry.bitCount);
+	async Task<(object? data, NetworkPacketInfo info)?> ReadPacket(FormatReader reader) {
+		uint id = await reader.ReadUIntAsync();
 		NetworkPacketInfo info = NetworkPacketRegistry.GetPacketInfo(id);
 		if (info == null) return null;
 		if (info.assocType != null) {
-			object value = await SerdeRegistry.Deserialize(reader, info.assocType);
+			object value = await FormatRegistry.DeserializeAsync(info.assocType, reader);
 			return (value, info);
 		}
 		else {
@@ -66,7 +67,7 @@ public partial class ClientTcp : IClient
 		if (started) return;
 		started = true;
 		while (true) {
-			var pack = await ReadPacket(bitReader);
+			var pack = await ReadPacket(reader);
 			if (pack == null) continue;
 			if (processors.ContainsKey(pack.Value.info.@enum)) {
 				ActionQueue.Enqueue(() =>

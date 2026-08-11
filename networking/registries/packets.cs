@@ -3,17 +3,15 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using tairasoul.unity.common.hashing;
 using tairasoul.unity.common.networking.attributes.packets;
 using PacketReliability = tairasoul.unity.common.networking.layer.PacketReliability;
 
 namespace tairasoul.unity.common.networking.registries;
 
-public record NetworkPacketInfo(object @enum, int id, Type? assocType, PacketReliability? reliability, ServerRelayType? relay);
+public record NetworkPacketInfo(object @enum, uint id, Type? assocType, PacketReliability? reliability, ServerRelayType? relay);
 
 public static class NetworkPacketRegistry {
-	internal static int bitCount = 0;
 	internal static ConcurrentDictionary<object, NetworkPacketInfo> info = [];
 	internal static ConcurrentDictionary<Assembly, List<NetworkPacketInfo>> toRegister = [];
 	internal static bool registered = false;
@@ -44,9 +42,6 @@ public static class NetworkPacketRegistry {
 							}
 						}
 						if (foundReliable && foundUnreliable) {}
-						else if (foundReliable) {
-							rel = PacketReliability.Reliable;
-						}
 						else if (foundUnreliable) {
 							rel = PacketReliability.Unreliable;
 						}
@@ -100,7 +95,7 @@ public static class NetworkPacketRegistry {
 		return _info;
 	}
 
-	public static NetworkPacketInfo GetPacketInfo(int id) {
+	public static NetworkPacketInfo GetPacketInfo(uint id) {
 		foreach (var pair in info) {
 			if (pair.Value.id == id) {
 				return pair.Value;
@@ -113,23 +108,8 @@ public static class NetworkPacketRegistry {
 		if (registered) return;
 		if (!toRegister.TryGetValue(asm, out List<NetworkPacketInfo> packets))
 			packets = [];
-		packets.Add(new NetworkPacketInfo(@enum, (int)@enum, assocType, reliability, relay));
+		packets.Add(new NetworkPacketInfo(@enum, (uint)@enum, assocType, reliability, relay));
 		toRegister.TryAdd(asm, packets);
-	}
-
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	static int BitLength(int n) => n == 0 ? 1 : 32 - LeadingZeroCount(n);
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	static int LeadingZeroCount(int n)
-	{
-		if (n == 0) return 32;
-		int count = 0;
-		while ((n & 0x80000000) == 0)
-		{
-			count++;
-			n <<= 1;
-		}
-		return count;
 	}
 
 	internal static void CompleteRegistration() {
@@ -144,17 +124,16 @@ public static class NetworkPacketRegistry {
 				pairs.Add((high, low, item.Value));
 			}
 		}
-		List<(ulong high, ulong low, List<NetworkPacketInfo> info)> ordered = [.. pairs
+		IEnumerable<(ulong high, ulong low, List<NetworkPacketInfo> info)> ordered = pairs
 			.OrderBy((item) => item.high)
-			.ThenBy((item) => item.low)];
-		int packetCount = 0;
+			.ThenBy((item) => item.low);
+		uint packetCount = 0;
 		foreach (var item in ordered) {
 			foreach (var packet in item.info) {
 				NetworkPacketInfo newInfo = packet with { id = packetCount++ };
 				info.TryAdd(packet.@enum, newInfo);
 			}
 		}
-		bitCount = BitLength(packetCount);
 		toRegister.Clear();
 		registered = true;
 	}

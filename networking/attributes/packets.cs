@@ -3,7 +3,6 @@ using System;
 namespace tairasoul.unity.common.networking.attributes.packets;
 
 enum InternalPacketTypes {
-	PacketBatchEnd,
 	IdRelay,
 	Connect,
 	Disconnect,

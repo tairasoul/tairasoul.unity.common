@@ -5,29 +5,29 @@ using UnityEngine;
 namespace tairasoul.unity.common.networking.sync;
 
 public abstract class PlayerSyncComponent : MonoBehaviour {
-	internal static List<PlayerSyncComponent> ActiveNetworked = [];
+	internal static Dictionary<ushort, PlayerSyncComponent> ActiveNetworked = [];
 	public static PlayerSyncComponent ours { get; internal set; }
 	public ushort player;
 	public abstract void Synchronize();
 	public abstract void Synchronize<T>(T packet) where T : IPacket;
-	public void Start() {
-		if (!ActiveNetworked.Contains(this))
-			ActiveNetworked.Add(this);
+	public virtual void Start() {
+		if (!ActiveNetworked.ContainsKey(player))
+			ActiveNetworked.Add(player, this);
 	}
 
-	public void OnDestroy() {
-		if (ActiveNetworked.Contains(this))
-			ActiveNetworked.Remove(this);
+	public virtual void OnDestroy() {
+		if (ActiveNetworked.ContainsKey(player))
+			ActiveNetworked.Remove(player);
 	}
 
-	public void OnEnable() {
-		if (!ActiveNetworked.Contains(this))
-			ActiveNetworked.Add(this);
+	public virtual void OnEnable() {
+		if (!ActiveNetworked.ContainsKey(player))
+			ActiveNetworked.Add(player, this);
 	}
 
-	public void OnDisable()
+	public virtual void OnDisable()
 	{
-		if (ActiveNetworked.Contains(this))
-			ActiveNetworked.Remove(this);
+		if (ActiveNetworked.ContainsKey(player))
+			ActiveNetworked.Remove(player);
 	}
 }

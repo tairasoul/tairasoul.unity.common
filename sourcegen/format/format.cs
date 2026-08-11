@@ -10,7 +10,7 @@ using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace tairasoul.unity.common.sourcegen.networking;
+namespace tairasoul.unity.common.sourcegen.format;
 
 using SerdeReturn = (IEnumerable<string> func, IEnumerable<string> @class, IEnumerable<string> attributes);
 

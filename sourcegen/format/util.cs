@@ -2,10 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text;
-using tairasoul.unity.common.hashing;
 
-namespace tairasoul.unity.common.sourcegen.networking;
+namespace tairasoul.unity.common.sourcegen.format;
 
 static class GeneratorUtil {
 	public class VariableTracker {
