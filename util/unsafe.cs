@@ -4,9 +4,8 @@ using System.Runtime.Serialization;
 
 namespace tairasoul.unity.common.util;
 
-// exists to both create custom extremely unsafe methods (if any would be useful) via Fody and to backport newer Unsafe features like SkipInit (ensuring they exist in most possible environments)
-public class CustomUnsafe {
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+// exists to both create custom extremely unsafe methods (if any would be useful) via il weaving and to backport newer Unsafe features like SkipInit (ensuring they exist in most possible environments)
+public unsafe class CustomUnsafe {
 	public static void SkipInit<T>(out T value) where T : struct {
 		throw null;
 	}
