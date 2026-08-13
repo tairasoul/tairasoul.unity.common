@@ -22,18 +22,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Fody" Version="6.9.3" PrivateAssets="all"/>
+    <RunAfterBuild Include="$(MSBuildThisFileDirectory)../weavers/CustomUnsafeWeaver/CustomUnsafeWeaver.csproj"/>
   </ItemGroup>
-
-  <ItemGroup>
-    <WeaverFiles Include="$(MsBuildThisFileDirectory)../weavers/CustomUnsafeWeaver.Fody/bin/$(Configuration)/netstandard2.0/CustomUnsafeWeaver.Fody.dll" />
-  </ItemGroup>
-
-  <PropertyGroup>
-    <WeaverConfiguration>
-      <Weavers>
-        <CustomUnsafeWeaver />
-      </Weavers>
-    </WeaverConfiguration>
-  </PropertyGroup>
 </Project>

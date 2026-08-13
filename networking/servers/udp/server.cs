@@ -131,7 +131,7 @@ public partial class ServerUdp : IServer {
 				addr = endPoint,
 				readMem = new()
 			};
-			conn.reader = new(conn.readMem, 4096);
+			conn.reader = new(conn.readMem, 4096*16);
 			conn.writer = new(4096*2);
 			players[id] = conn;
 			Task.Run(async () => await ProcessPackets(id, conn), ct);
@@ -199,6 +199,6 @@ public partial class ServerUdp : IServer {
 
 	public void OnConnect(Action<object, ushort> action)
 	{
-		throw new NotImplementedException();
+		// throw new NotImplementedException();
 	}
 }

@@ -12,7 +12,7 @@ namespace tairasoul.unity.common.format.memory;
 public class RingBuffer : IDisposable
 {
 	readonly RingBufferMemory memory;
-	readonly ExpandableHeapMemory copy;
+	readonly ExpandableMemory copy;
 	readonly int mask;
 	public readonly int size;
 	public int Length => length;
@@ -59,6 +59,7 @@ public class RingBuffer : IDisposable
 			unsafe {
 				byte* ptr = copy.Memory;
 				byte* src = memory.BackingPointer;
+				copy.EnsureSize(bytes);
 				MemOps.Copy(src + dataStart, ptr, bytesToEnd);
 				MemOps.Copy(src, ptr + bytesToEnd, bytes - bytesToEnd);
 			}

@@ -154,7 +154,7 @@ public partial class ServerTcp : IServer {
 						client = socket,
 						stream = socket.GetStream()
 					};
-					connection.reader = new(connection.stream, 4096);
+					connection.reader = new(connection.stream, 4096*16);
 					connection.writer = new(4096*2);
 					players[currentPlayerIndex] = connection;
 					onConn(connection, currentPlayerIndex);

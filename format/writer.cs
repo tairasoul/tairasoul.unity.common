@@ -21,7 +21,7 @@ public class FormatWriter(int baseLength) : IDisposable {
 	// 	ReadWriteHooks.Patch();
 	// }
 
-	ExpandableHeapMemory memory = new(baseLength);
+	ExpandableMemory memory = new(baseLength);
 	public int Length {
 		get;
 		private set;

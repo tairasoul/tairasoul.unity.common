@@ -252,7 +252,7 @@ public class FormatReader(Stream sourceStream, int bufferSize) : IDisposable {
 		if (len > ring.size) {
 			int ringCanHold = ring.size - len;
 			int remaining = len;
-			ExpandableStackMemory stackMem = new(len);
+			ExpandableMemory stackMem = new(len);
 			int currentOffset = 0;
 			while (ringCanHold > 0)
 			{
@@ -303,13 +303,13 @@ public class FormatReader(Stream sourceStream, int bufferSize) : IDisposable {
 		}
 	}
 
-	public async ValueTask<string> ReadStringAsync() {
+	public async Task<string> ReadStringAsync() {
 		await EnsureBytesAsync(4);
 		int len = CastAs<int>(ring.Next(4));
 		if (len > ring.size) {
 			int ringCanHold = ring.size - len;
 			int remaining = len;
-			ExpandableHeapMemory heapMem = new(len);
+			ExpandableMemory heapMem = new(len);
 			int currentOffset = 0;
 			while (ringCanHold > 0)
 			{

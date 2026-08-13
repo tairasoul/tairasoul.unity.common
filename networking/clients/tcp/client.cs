@@ -24,8 +24,8 @@ public partial class ClientTcp : IClient
 		client = new(host, port);
 		client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
 		stream = client.GetStream();
-		reader = new(stream, 4096);
 		writer = new(4096*2);
+		reader = new(stream, 4096*16);
 	}
 
 	public void SendPacketHeader(object header) {

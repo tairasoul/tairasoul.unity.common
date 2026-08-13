@@ -27,7 +27,7 @@ public partial class ClientUdp : IClient {
 		this.host = host;
 		this.port = hostPort;
 		writer = new(4096*2);
-		reader = new(readStream, 4096);
+		reader = new(readStream, 4096*16);
 	}
 
 	public void Disconnect() {
