@@ -254,7 +254,7 @@ public class FormatReader(Stream sourceStream, int bufferSize) : IDisposable {
 			int remaining = len;
 			ExpandableMemory stackMem = new(len);
 			int currentOffset = 0;
-			while (ringCanHold > 0)
+			while (remaining > 0)
 			{
 				Span<byte> span = stackMem.MemorySpan.Slice(currentOffset);
 				EnsureBytesExact(ringCanHold);
@@ -311,7 +311,7 @@ public class FormatReader(Stream sourceStream, int bufferSize) : IDisposable {
 			int remaining = len;
 			ExpandableMemory heapMem = new(len);
 			int currentOffset = 0;
-			while (ringCanHold > 0)
+			while (remaining > 0)
 			{
 				await EnsureBytesExactAsync(ringCanHold);
 				Span<byte> span = heapMem.MemorySpan.Slice(currentOffset);
