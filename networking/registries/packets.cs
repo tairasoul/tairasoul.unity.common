@@ -5,7 +5,6 @@ using System.Linq;
 using System.Reflection;
 using tairasoul.unity.common.hashing;
 using tairasoul.unity.common.networking.attributes.packets;
-using vapmp;
 
 namespace tairasoul.unity.common.networking.registries;
 
@@ -44,7 +43,6 @@ public static class NetworkPacketRegistry {
 
 	public static NetworkPacketInfo GetPacketInfo(Type dataType) {
 		foreach (var value in info.Values) {
-			Plugin.Log.LogInfo($"{dataType} {value}");
 			if (value.assocType == dataType)
 				return value;
 		}
