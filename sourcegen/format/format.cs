@@ -92,7 +92,7 @@ static class Generator
 
 		string s = targetSymbol?.ToDisplayString(format);
 
-		if (s != "tairasoul.unity.common.format.tairasoul.unity.common.format.FormatReader" && s != "tairasoul.unity.common.format.tairasoul.unity.common.format.FormatWriter")
+		if (s != "tairasoul.unity.common.format.FormatReader" && s != "tairasoul.unity.common.format.FormatWriter")
 			return [];
 
 		if (methodSymbol.TypeArguments.Length <= 0)
