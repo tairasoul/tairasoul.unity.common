@@ -12,9 +12,24 @@
 		</ItemGroup>
 		<Delete Files="@(FilesToDelete)" />
 	</Target>
-	<Target Name="RunAfterBuild" AfterTargets="Build">
+	<PropertyGroup>
+		<CompilationWasTriggered>false</CompilationWasTriggered>
+		<ForceTrigger>false</ForceTrigger>
+		<TargetsTriggeredByCompilation>$(TargetsTriggeredByCompilation);MarkCompilationTriggered</TargetsTriggeredByCompilation>
+	</PropertyGroup>
+	<Target Name="MarkCompilationTriggered">
+		<PropertyGroup>
+			<CompilationWasTriggered>true</CompilationWasTriggered>
+		</PropertyGroup>
+	</Target>
+	<Target Name="RunAfterBuild" AfterTargets="Build" Condition="@(RunAfterBuild) != '' And ($(CompilationWasTriggered) == 'true' Or $(ForceTrigger) == 'true')">
 		<MSBuild Projects="@(RunAfterBuild)" Targets="Build" Properties="Configuration=$(Configuration)" />
 		<Exec 
-			Command="dotnet &quot;%(RunAfterBuild.RootDir)%(RunAfterBuild.Directory)bin/$(Configuration)/net10.0/%(RunAfterBuild.Filename).dll&quot; &quot;$(TargetPath)&quot;" />
+			Command="dotnet &quot;%(RunAfterBuild.RootDir)%(RunAfterBuild.Directory)bin/$(Configuration)/net10.0/%(RunAfterBuild.Filename).dll&quot; &quot;$(TargetPath)&quot; &quot;$(MSBuildProjectFullPath)&quot;" />
+	</Target>
+	<Target Name="RunAfterBuildExp" AfterTargets="Build" Condition="@(RunAfterBuildExp) != '' And ($(CompilationWasTriggered) == 'true' Or $(ForceTrigger) == 'true')">
+		<MSBuild Projects="@(RunAfterBuildExp)" Targets="Build" Properties="Configuration=$(Configuration)" />
+		<Exec 
+			Command="dotnet &quot;%(RunAfterBuildExp)&quot; &quot;$(TargetPath)&quot; &quot;$(MSBuildProjectFullPath)&quot;" />
 	</Target>
 </Project>

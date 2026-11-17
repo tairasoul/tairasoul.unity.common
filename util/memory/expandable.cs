@@ -2,7 +2,7 @@ using System;
 using System.Runtime.CompilerServices;
 using tairasoul.unity.common.util;
 
-namespace tairasoul.unity.common.format.memory;
+namespace tairasoul.unity.common.util.memory;
 
 unsafe struct ExpandableMemory(int baseLength) : IDisposable
 {

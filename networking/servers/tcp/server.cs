@@ -1,62 +1,57 @@
 using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using tairasoul.unity.common.util;
 using tairasoul.unity.common.networking.interfaces;
-using tairasoul.unity.common.networking.attributes.packets;
 using System.Threading;
 using tairasoul.unity.common.networking.registries;
 using System.Linq;
 using tairasoul.unity.common.format;
+using tairasoul.unity.common.networking.layer;
+using tairasoul.unity.common.networking.protocols.tcp;
 
 namespace tairasoul.unity.common.networking.servers;
 
-public class TcpConnection {
-	public TcpClient client;
-	public Stream stream;
-	public FormatReader reader;
-	public FormatWriter writer;
-	public bool needsFlush = false;
-}
-
-public partial class ServerTcp : IServer {
-	Dictionary<object, Action<object, ushort>[]> processors = [];
+public class ServerTcp : IServer {
 	TcpListener listener;
-	ushort currentPlayerIndex = 1;
-	public Dictionary<ushort, TcpConnection> players = [];
-	//Dictionary<PacketType, Action<object, ushort>[]> processors = [];
-	Action<object, ushort> onConn = (_, _) => {};
-	public Action<TcpClient, ushort> ConnAdded = (_, _) => { };
-	public ServerTcp(int port) {
+	public IServerCoordinator Coordinator { get; set; }
+	ushort currentId;
+
+	public void Host(int port) {
+		currentId = Coordinator.StartingID;
 		listener = new(IPAddress.Any, port);
 		listener.Server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
 		listener.Start();
 	}
 
 	public void Close() {
+		foreach (var (id, pair) in Coordinator.Tracker.GetPairs()) {
+			var conn = Coordinator.ConnectionFromPair(this, pair);
+			conn.Close();
+		}
 		listener.Stop();
+		listener = null;
 	}
 
-	public void RegisterPacketProcessor<T>(object type, Action<T, ushort> processor) where T : IPacket
-	{
-		if (processors.TryGetValue(type, out var list)) {
-			processors.Add(type, [.. list, (a, b) => processor((T)a, b)]);
-		}
-		else {
-			processors.Add(type, [(a, b) => processor((T)a, b)]);
-		}
+	void RelayHeader(object header, IConnection connection) {
+		uint id = GetPacketByHeader(header);
+		ActionQueue.Enqueue(() =>
+		{
+			connection.Writer.Write(id);
+			connection.NeedsFlush = true;
+		});
+	}
+
+	void RelayHeader(object header, ConnectionPair pair) {
+		var conn = Coordinator.ConnectionFromPair(this, pair);
+		RelayHeader(header, conn);
 	}
 
 	public void RelayHeader(object header, ushort player) {
-		NetworkPacketInfo info = NetworkPacketRegistry.GetPacketInfo(header);
-		ActionQueue.Enqueue(() =>
-		{
-			players[player].writer.Write(info.id);
-			players[player].needsFlush = true;
-		});
+		var pair = Coordinator.Tracker.GetPair(player);
+		if (pair == null) return;
+		RelayHeader(header, pair);
 	}
 
 	public void RelayHeader(object packet, params ushort[] players) {
@@ -66,32 +61,60 @@ public partial class ServerTcp : IServer {
 	}
 
 	public void RelayHeaderAll(object header) {
-		foreach (ushort player in players.Keys) {
-			RelayHeader(header, player);
+		foreach (var (id, pair) in Coordinator.Tracker.GetPairs()) {
+			RelayHeader(header, pair);
 		}
 	}
 
 	public void RelayHeaderExcept(object header, params ushort[] except) {
-		foreach (ushort player in players.Keys) {
-			if (!except.Contains(player)) {
-				RelayHeader(header, player);
+		foreach (var (id, pair) in Coordinator.Tracker.GetPairs()) {
+			if (!except.Contains(id)) {
+				RelayHeader(header, pair);
 			}
 		}
 	}
 
-	public void Relay<T>(T packet, ushort player) where T : IPacket {
+	// implemented at preload time via csmixer/mixer.cs
+
+	uint GetPacketId<T>() {
 		NetworkPacketInfo info = NetworkPacketRegistry.GetPacketInfo<T>();
-    ActionQueue.Enqueue(() =>
-    {
-			players[player].writer.Write(info.id);
-			players[player].writer.Write(packet);
-			players[player].needsFlush = true;
-    });
+		return info.id;
+	}
+
+	// implemented at preload time via csmixer/mixer.cs
+
+	uint GetPacketByHeader(object obj) {
+		return uint.MaxValue;
+	}
+
+	void WriteById(FormatWriter writer, uint id, object packet) {
+		writer.Write((IPacket)packet);
+	}
+
+	void Relay<T>(T packet, IConnection connection) where T : IPacket {
+		uint id = GetPacketId<T>();
+		ActionQueue.Enqueue(() =>
+		{
+			connection.Writer.Write(id);
+			WriteById(connection.Writer, id, packet);
+			connection.NeedsFlush = true;
+		});
+	}
+
+	void Relay<T>(T packet, ConnectionPair pair) where T : IPacket {
+		var conn = Coordinator.ConnectionFromPair(this, pair);
+		Relay(packet, conn);
+	}
+
+	public void Relay<T>(T packet, ushort player) where T : IPacket {
+		var pair = Coordinator.Tracker.GetPair(player);
+		if (pair == null) return;
+		Relay(packet, pair);
 	}
 
 	public void RelayAll<T>(T packet) where T : IPacket {
-		foreach (ushort conn in players.Keys) {
-			Relay(packet, conn);
+		foreach (var (id, pair) in Coordinator.Tracker.GetPairs()) {
+			Relay(packet, pair);
 		}
 	}
 
@@ -102,72 +125,78 @@ public partial class ServerTcp : IServer {
 	}
 
 	public void RelayExcept<T>(T packet, params ushort[] player) where T : IPacket {
-		foreach (ushort pl in players.Keys) {
-			if (!player.Contains(pl)) {
-				Relay(packet, pl);
+		foreach (var (id, pair) in Coordinator.Tracker.GetPairs()) {
+			if (!player.Contains(id)) {
+				Relay(packet, pair);
 			}
 		}
 	}
 
-	bool started = false;
+	bool started = false;	
 
-	async Task<(object? data, NetworkPacketInfo info)?> ReadPacket(FormatReader reader) {
-		uint id = await reader.ReadUIntAsync();
-		NetworkPacketInfo info = NetworkPacketRegistry.GetPacketInfo(id);
-		if (info == null) return null;
-		if (info.assocType != null) {
-			object value = await FormatRegistry.DeserializeAsync(info.assocType, reader);
-			return (value, info);
-		}
-		else {
-			return (null, info);
-		}
+	// fallback implementation, csmixer/mixer.cs replaces this with a call to a runtime-generated id to direct call method
+
+	Task<object?> DeserializeAsync(FormatReader reader, uint id) {
+		var info = NetworkPacketRegistry.GetPacketInfo(id);
+		if (info == null || info.assocType == null) return Task.FromResult<object?>(null);
+		return FormatRegistry.DeserializeAsync(info.assocType, reader);
 	}
 
-	public async Task ProcessPackets(ushort id, TcpConnection conn)
+	async Task<(object? data, uint packetId)> ReadPacket(FormatReader reader) {
+		uint id = await reader.ReadUIntAsync();
+		object? value = await DeserializeAsync(reader, id);
+		return (value, id);
+	}
+
+	// implemented at preload time via csmixer/mixer.cs
+
+	bool packetIdIsValid(uint packetId) {
+		return NetworkPacketRegistry.GetPacketInfo(packetId) != null;
+	}
+
+	// implemented at preload time via csmixer/mixer.cs
+
+	void RouteExplicit(uint packetId, ushort playerId) {
+
+	}
+
+	void CheckRouting(object? data, uint packetId, ushort playerId) {
+		if (data is IRoutedPacket routed)
+			routed.Route(true, playerId);
+		else
+			RouteExplicit(packetId, playerId);
+	}
+
+	public async Task ProcessPackets(ushort id, IConnection conn)
 	{
 		while (true) {
-			var pack = await ReadPacket(conn.reader);
-			if (pack == null) continue;
-			CheckSpecialAction(pack.Value.info.@enum, conn.reader);
-			if (processors.ContainsKey(pack.Value.info.@enum)) {
-				ActionQueue.Enqueue(() =>
-				{
-					foreach (var processor in processors[pack.Value.info.@enum])
-						processor(pack.Value.data, id);
-				});
+			conn.RecheckConnected();
+			if (!conn.Connected) {
+				Coordinator.HandleDisconnect(this, id);
+				break;
 			}
+			var (data, packetId) = await ReadPacket(conn.Reader);
+			if (!packetIdIsValid(packetId)) continue;
+			CheckRouting(data, packetId, id);
 		}
 	}
 
-	public void ProcessConnections(CancellationToken ct)
+	public async Task ProcessConnections(CancellationToken ct)
 	{
 		if (started) return;
 		started = true;
 		while (true) {
-			if (listener.Pending()) {
-				TcpClient socket = listener.AcceptTcpClient();
-				Task.Run(async () =>
-				{
-					TcpConnection connection = new()
-					{
-						client = socket,
-						stream = socket.GetStream()
-					};
-					connection.reader = new(connection.stream, 4096*16);
-					connection.writer = new(4096*2);
-					players[currentPlayerIndex] = connection;
-					onConn(connection, currentPlayerIndex);
-					ConnAdded(socket, currentPlayerIndex);
-					currentPlayerIndex += 1;
-					await ProcessPackets((ushort)(currentPlayerIndex - 1), connection);
-				});
-			}
+			TcpClient socket = await listener.AcceptTcpClientAsync();
+			socket.NoDelay = true;
+			var conn = new TcpConnection();
+			conn.Create(socket.GetStream(), socket.GetStream());
+			conn.client = socket;
+			Coordinator.ClientConnected(this, currentId, conn, (IPEndPoint)socket.Client.RemoteEndPoint);
+			_ = Task.Run(async () =>
+			{
+				await ProcessPackets(currentId, conn);
+			}, ct);
+			currentId++;
 		}
-	}
-
-	public void OnConnect(Action<object, ushort> action)
-	{
-		onConn = action;
 	}
 }

@@ -37,7 +37,7 @@ public class HasShadowStruct(Type shadowType) : Attribute {
 }
 
 /// <summary>
-/// this enum will be represented by the index of the enum rather than the value
+/// this enum will be represented by the index of the enum rather than the value, via the smallest possible datatype for said enum
 /// </summary>
 [AttributeUsage(AttributeTargets.Field)]
 public class CompactedEnumRepresentation : Attribute;

@@ -7,7 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using tairasoul.unity.common.util;
 
-namespace tairasoul.unity.common.format.memory;
+namespace tairasoul.unity.common.util.memory;
 
 public class RingBuffer : IDisposable
 {

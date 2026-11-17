@@ -5,7 +5,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 // using tairasoul.unity.common.format.il;
-using tairasoul.unity.common.format.memory;
+using tairasoul.unity.common.util.memory;
 using tairasoul.unity.common.util;
 
 namespace tairasoul.unity.common.format;
@@ -13,14 +13,6 @@ namespace tairasoul.unity.common.format;
 #pragma warning disable CS9124
 
 public class FormatWriter(int baseLength) : IDisposable {
-	// private delegate void WriteDelegate(object data);
-
-	// private static WriteDelegate writeDelegate;
-
-	// static FormatWriter() {
-	// 	ReadWriteHooks.Patch();
-	// }
-
 	ExpandableMemory memory = new(baseLength);
 	public int Length {
 		get;
@@ -189,10 +181,16 @@ public class FormatWriter(int baseLength) : IDisposable {
 		Length += 8;
 	}
 
+	// todo rebuild with csmixer
+
+#if FORMAT_INCLUDE_REGISTRY
+
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public void Write<T>(T data) {
-		FormatRegistry.Serialize<T>(data, this);
+		FormatRegistry.Serialize(data, this);
 	}
+
+#endif
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public unsafe void WriteUnmanaged<T>(T data) where T : unmanaged {

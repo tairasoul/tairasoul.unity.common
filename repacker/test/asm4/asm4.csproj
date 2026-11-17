@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <LangVersion>13</LangVersion>
+  </PropertyGroup>
+	<ItemGroup>
+		<ProjectReference Include="../asm2/asm2.csproj" />
+		<ProjectReference Include="../asm3/asm3.csproj" />
+	</ItemGroup>
+</Project>

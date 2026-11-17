@@ -2,45 +2,23 @@ using System;
 
 namespace tairasoul.unity.common.networking.attributes.packets;
 
-enum InternalPacketTypes {
-	IdRelay,
-	Connect,
-	Disconnect,
-	PlayerConnected
-}
-
-public enum ServerRelayType {
-	RelayAll,
-	RelayExceptSender
-}
-
-public enum PacketReliability {
-	Reliable,
-	Unreliable
-}
-
+/// <summary>
+/// what type this packet gets sent with
+/// </summary>
+/// <param name="data">packet data type</param>
 [AttributeUsage(AttributeTargets.Field)]
 public class CorrelatesTo(Type data) : Attribute {
 	public Type correlation = data;
 }
 
+/// <summary>
+/// this packet type has an empty body
+/// </summary>
 [AttributeUsage(AttributeTargets.Field)]
-class CorrelatesToInternal(InternalPacketTypes iType) : Attribute {
-	public InternalPacketTypes packet = iType;
-}
+public class EmptyBody : Attribute;
 
-[AttributeUsage(AttributeTargets.Field)]
-public class ServerRelay(ServerRelayType handling) : Attribute {
-	public ServerRelayType handling = handling;
-}
-
-[AttributeUsage(AttributeTargets.Field, AllowMultiple = true)]
-public class Reliability(PacketReliability reliability) : Attribute {
-	public PacketReliability reliability = reliability;
-}
-
-[AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
-public class VariantOf(Type[] types) : Attribute {}
-
+/// <summary>
+/// enums marked with this attribute will be scanned for packet types
+/// </summary>
 [AttributeUsage(AttributeTargets.Enum)]
-public class PacketTypeIdentifier() : Attribute {}
+public class PacketTypeIdentifier : Attribute;

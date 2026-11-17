@@ -19,25 +19,26 @@ record AccessorGetCacheKey(Type type, string fieldName);
 public static class AccessorUtil {
 	internal static ConcurrentDictionary<AccessorGetCacheKey, Func<object, object>> CachedGetAccessors = [];
 	// internal static Dictionary<AccessorSetCacheKey, Action<object, object>> CachedSetAccessors = [];
-#if ACCESSOR_INCLUDE_FINDFUNC
-	internal static ConcurrentDictionary<string, GameObject> GameObjectCache = [];
-#endif
 
-	internal static void RemoveElement(Type type, string fieldName) {
+	public static void RemoveElement(Type type, string fieldName) {
 		CachedGetAccessors.TryRemove(new(type, fieldName), out _);
 		// CachedSetAccessors.TryRemove(new(type, fieldName), out _);
 	}
 
-	internal static void ClearCache()
+	public static void ClearCache()
 	{
 		CachedGetAccessors.Clear();
 		// CachedSetAccessors.Clear();
-#if ACCESSOR_INCLUDE_FINDFUNC
-		GameObjectCache.Clear();
-#endif
 	}
-	
+
 #if ACCESSOR_INCLUDE_FINDFUNC
+	internal static ConcurrentDictionary<string, GameObject> GameObjectCache = [];
+
+	public static void ClearGameobjectCache()
+	{
+		GameObjectCache.Clear();
+	}
+
 	static IEnumerable<string> SplitUnescaped(string text, char separator, char escape = '\\')
 	{
 		var buffer = new StringBuilder();

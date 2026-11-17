@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>tairasoul.unity.common.repacker</RootNamespace>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <LangVersion>13</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Remove="test/asm1/asm1.csproj" />
+    <ProjectReference Remove="test/asm2/asm2.csproj" />
+    <ProjectReference Remove="test/asm3/asm3.csproj" />
+    <ProjectReference Remove="test/asm4/asm4.csproj" />
+    <ProjectReference Remove="test/test/test.csproj" />
+    <ProjectReference Remove="test/repacking-repacker/repacking.csproj" />
+    <Compile Remove="test/asm1/a.cs" />
+    <Compile Remove="test/asm2/b.cs" />
+    <Compile Remove="test/asm3/c.cs" />
+    <Compile Remove="test/asm4/d.cs" />
+    <Compile Remove="test/test/main.cs" />
+    <Compile Remove="test/repacking-repacker/main.cs" />
+    <Compile Remove="test/**/*.cs" />
+    <PackageReference Include="Mono.Cecil" Version="0.11.6" />
+  </ItemGroup>
+</Project>

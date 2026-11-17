@@ -11,17 +11,27 @@
     <DefineConstants>$(DefineConstants);UNITY_ENVIRONMENT</DefineConstants>
   </PropertyGroup>
 
+  <PropertyGroup Condition="$(AQFixedUpdate) == 'true'">
+    <DefineConstants>$(DefineConstants);ACTION_QUEUE_USE_FIXED_UPDATE</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$(AQRunImmediately) == 'true'">
+    <DefineConstants>$(DefineConstants);ACTION_QUEUE_RUN_IMMEDIATELY</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)../util/accessor.cs"/>
     <Compile Include="$(MSBuildThisFileDirectory)../util/action_queue.cs" Condition="$(IncludeActionQueue) != 'false'"/>
     <Compile Include="$(MSBuildThisFileDirectory)../util/assembly.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)../util/casts.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../util/memory/expandable.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../util/memory/ringbuffer.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)../util/memory.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)../util/unmanaged.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)../util/unsafe.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../util/unsafe.cs" Condition="$(IncludeCustomUnsafe) != 'false'"/>
   </ItemGroup>
 
-  <ItemGroup>
+  <ItemGroup Condition="$(IncludeCustomUnsafe) != 'false'">
     <RunAfterBuild Include="$(MSBuildThisFileDirectory)../weavers/CustomUnsafeWeaver/CustomUnsafeWeaver.csproj"/>
   </ItemGroup>
 </Project>

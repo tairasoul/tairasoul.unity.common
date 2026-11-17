@@ -5,11 +5,11 @@ using System.Linq;
 using System.Reflection;
 using tairasoul.unity.common.hashing;
 using tairasoul.unity.common.networking.attributes.packets;
-using PacketReliability = tairasoul.unity.common.networking.layer.PacketReliability;
+using vapmp;
 
 namespace tairasoul.unity.common.networking.registries;
 
-public record NetworkPacketInfo(object @enum, uint id, Type? assocType, PacketReliability? reliability, ServerRelayType? relay);
+public record NetworkPacketInfo(object @enum, uint id, Type? assocType);
 
 public static class NetworkPacketRegistry {
 	internal static ConcurrentDictionary<object, NetworkPacketInfo> info = [];
@@ -18,58 +18,19 @@ public static class NetworkPacketRegistry {
 
 	static NetworkPacketRegistry() {
 		Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
+		Array.Sort(assemblies, (x, y) => string.Compare(x.FullName, y.FullName));
 		foreach (Assembly assembly in assemblies) {
 			Type[] types = assembly.GetTypes();
 			foreach (Type type in types) {
 				if (Attribute.IsDefined(type, typeof(PacketTypeIdentifier))) {
 					var fieldInfos = type.GetFields(BindingFlags.Public | BindingFlags.Static);
 					foreach (var field in fieldInfos) {
-						PacketReliability? rel = null;
-						ServerRelayType? relay = null;
 						Type? assocType = null;
-						var ident = field.GetCustomAttributes<Reliability>();
-						ServerRelay? relay1 = field.GetCustomAttribute<ServerRelay>();
 						CorrelatesTo? correlates = field.GetCustomAttribute<CorrelatesTo>();
-						CorrelatesToInternal? icorrelates = field.GetCustomAttribute<CorrelatesToInternal>();
-						bool foundReliable = false;
-						bool foundUnreliable = false;
-						foreach (var id in ident) {
-							if (id.reliability == attributes.packets.PacketReliability.Reliable) {
-								foundReliable = true;
-							}
-							else if (id.reliability == attributes.packets.PacketReliability.Unreliable) {
-								foundUnreliable = true;
-							}
-						}
-						if (foundReliable && foundUnreliable) {}
-						else if (foundUnreliable) {
-							rel = PacketReliability.Unreliable;
-						}
-						else {
-							rel = PacketReliability.Reliable;
-						}
-						if (relay1 != null) {
-							relay = relay1.handling;
-						}
 						if (correlates != null) {
 							assocType = correlates.correlation;
 						}
-						if (icorrelates != null) {
-							switch (icorrelates.packet) {
-								case InternalPacketTypes.Connect:
-								case InternalPacketTypes.PlayerConnected:
-								case InternalPacketTypes.IdRelay:
-									foreach (var ty in types) {
-										if (ty.FullName == "tairasoul.unity.common.networking.gentypes.InternalIdRelayPacket" 
-										|| ty.FullName == "tairasoul.unity.common.networking.gentypes.InternalConnectPacket"
-										|| ty.FullName == "tairasoul.unity.common.networking.gentypes.InternalPlayerConnectedPacket") {
-											assocType = ty;
-										}
-									}
-									break;
-							}
-						}
-						Register(assembly, field.GetValue(null), assocType, rel, relay);
+						Register(assembly, field.GetValue(null), assocType);
 					}
 				}
 			}
@@ -83,6 +44,7 @@ public static class NetworkPacketRegistry {
 
 	public static NetworkPacketInfo GetPacketInfo(Type dataType) {
 		foreach (var value in info.Values) {
+			Plugin.Log.LogInfo($"{dataType} {value}");
 			if (value.assocType == dataType)
 				return value;
 		}
@@ -104,11 +66,11 @@ public static class NetworkPacketRegistry {
 		throw new KeyNotFoundException($"Could not find info for id {id}");
 	}
 
-	static void Register(Assembly asm, object @enum, Type? assocType, PacketReliability? reliability, ServerRelayType? relay) {
+	static void Register(Assembly asm, object @enum, Type? assocType) {
 		if (registered) return;
 		if (!toRegister.TryGetValue(asm, out List<NetworkPacketInfo> packets))
 			packets = [];
-		packets.Add(new NetworkPacketInfo(@enum, (uint)@enum, assocType, reliability, relay));
+		packets.Add(new NetworkPacketInfo(@enum, (uint)@enum, assocType));
 		toRegister.TryAdd(asm, packets);
 	}
 
@@ -127,12 +89,21 @@ public static class NetworkPacketRegistry {
 		IEnumerable<(ulong high, ulong low, List<NetworkPacketInfo> info)> ordered = pairs
 			.OrderBy((item) => item.high)
 			.ThenBy((item) => item.low);
+		List<NetworkPacketInfo> withoutData = [];
 		uint packetCount = 0;
 		foreach (var item in ordered) {
 			foreach (var packet in item.info) {
+				if (packet.assocType == null) {
+					withoutData.Add(packet);
+					continue;
+				}
 				NetworkPacketInfo newInfo = packet with { id = packetCount++ };
-				info.TryAdd(packet.@enum, newInfo);
+				info.TryAdd(newInfo.@enum, newInfo);
 			}
+		}
+		foreach (var without in withoutData) {
+			NetworkPacketInfo newInfo = without with { id = packetCount++ };
+			info.TryAdd(newInfo.@enum, newInfo);
 		}
 		toRegister.Clear();
 		registered = true;

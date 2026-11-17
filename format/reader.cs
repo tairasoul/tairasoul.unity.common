@@ -9,40 +9,14 @@ using System.Text;
 using System.Threading.Tasks;
 using tairasoul.unity.common.format.attributes;
 // using tairasoul.unity.common.format.il;
-using tairasoul.unity.common.format.memory;
+using tairasoul.unity.common.util.memory;
 using tairasoul.unity.common.util;
+using System.Collections;
 
 namespace tairasoul.unity.common.format;
 
 public class FormatReader(Stream sourceStream, int bufferSize) : IDisposable {
-	// private delegate object ReadDelegate();
-
-	// private static ReadDelegate readDelegate;
-
-	// static FormatReader() {
-	// 	DynamicMethod readMethod = new("readDelegate", typeof(object), [typeof(FormatReader), typeof(Type)], true);
-	// 	ILGenerator il = readMethod.GetILGenerator();
-	// 	Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
-	// 	foreach (var assembly in assemblies) {
-	// 		Type[] types = assembly.GetTypes();
-	// 		foreach (var type in types) {
-	// 			if (type.Namespace == "tairasoul.unity.common.format.items") {
-	// 				var @for = type.GetCustomAttribute<FormatMethodsForAttribute>();
-	// 				if (@for == null) continue;
-	// 				il.Emit(OpCodes.Ldarg_1);
-
-	// 				// var res = BuildInfo(@for.target, type);
-	// 				// reg[@for.target] = res;
-	// 			}
-	// 		}
-	// 	}
-	// 	// if (!ReadWriteHooks.Patched) {
-	// 	// 	ReadWriteHooks.Patch();
-	// 	// }
-	// }
-
 	private delegate string FastAllocString(int length);
-
 	private static readonly FastAllocString fastAllocString;
 
 	static FormatReader() {
@@ -54,7 +28,6 @@ public class FormatReader(Stream sourceStream, int bufferSize) : IDisposable {
 			il.Emit(OpCodes.Ret);
 			fastAllocString = (FastAllocString)fastInitMethod.CreateDelegate(typeof(FastAllocString));
 		}
-		// ReadWriteHooks.Patch();
 	}
 
 	public RingBuffer ring = new(bufferSize);
@@ -359,8 +332,9 @@ public class FormatReader(Stream sourceStream, int bufferSize) : IDisposable {
 		}
 	}
 
-// #pragma warning disable CS8603
-// #pragma warning disable CS1998
+#if FORMAT_INCLUDE_REGISTRY
+
+	// todo rebuild with csmixer
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public T Read<T>() {
@@ -368,12 +342,11 @@ public class FormatReader(Stream sourceStream, int bufferSize) : IDisposable {
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public async Task<T> ReadAsync<T>() {
-		return await FormatRegistry.DeserializeAsync<T>(this);
+	public Task<T> ReadAsync<T>() {
+		return FormatRegistry.DeserializeAsync<T>(this);
 	}
 
-// #pragma warning restore CS8603
-// #pragma warning restore CS1998
+#endif
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public T ReadUnmanaged<T>() where T : unmanaged {

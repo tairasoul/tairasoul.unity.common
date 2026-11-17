@@ -15,4 +15,14 @@ public static class AssemblyUtils {
   public static byte[] GetResourceBytes(string resource) {
     return GetResourceBytes(Assembly.GetCallingAssembly(), resource);
   }
+
+  public static bool ResourceExists(Assembly assembly, string resource) {
+    using Stream? stream = assembly.GetManifestResourceStream(resource);
+    if (stream == null) return false;
+		return true;
+	}
+
+  public static bool ResourceExists(string resource) {
+		return ResourceExists(Assembly.GetCallingAssembly(), resource);
+	}
 }

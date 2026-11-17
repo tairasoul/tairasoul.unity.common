@@ -9,57 +9,82 @@ using System.Collections.Generic;
 using System;
 using System.Reflection.Emit;
 using tairasoul.unity.common.format;
+using tairasoul.unity.common.networking.protocols.tcp;
 
 namespace tairasoul.unity.common.networking.clients;
 
 public partial class ClientTcp : IClient
 {
-	TcpClient client;
-	Stream stream;
-	Dictionary<object, Action<object>[]> processors = [];
-	public FormatReader reader;
-	FormatWriter writer;
-	bool needsFlush = false;
-	public ClientTcp(string host, int port) {
-		client = new(host, port);
-		client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
-		stream = client.GetStream();
-		writer = new(4096*2);
-		reader = new(stream, 4096*16);
+	TcpConnection connection;
+	public ClientTcp() {
+		connection = new();
 	}
 
-	public void SendPacketHeader(object header) {
-		NetworkPacketInfo info = NetworkPacketRegistry.GetPacketInfo(header);
-		ActionQueue.Enqueue(() =>
-		{
-			writer.Write(info.id);
-			needsFlush = true;
-		});
+	public void Disconnect() {
+		connection.Close();
+	}
+
+	uint GetPacketId<T>() {
+		NetworkPacketInfo info = NetworkPacketRegistry.GetPacketInfo<T>();
+		return info.id;
+	}
+
+	uint GetPacketByHeader(object obj) {
+		return uint.MaxValue;
+	}
+
+	void WriteById(FormatWriter writer, uint id, object packet) {
+		writer.Write((IPacket)packet);
 	}
 
 	public void SendPacket<T>(T packet) where T : IPacket {
-		NetworkPacketInfo info = NetworkPacketRegistry.GetPacketInfo<T>();
+		uint id = GetPacketId<T>();
 		ActionQueue.Enqueue(() =>
 		{
-			writer.Write(info.id);
-			writer.Write(packet);
-			needsFlush = true;
+			connection.Writer.Write(id);
+			WriteById(connection.Writer, id, packet);
+			connection.NeedsFlush = true;
+		});
+	}
+
+	public void SendPacketHeader(object packet) {
+		uint id = GetPacketByHeader(packet);
+		ActionQueue.Enqueue(() =>
+		{
+			connection.Writer.Write(id);
+			connection.NeedsFlush = true;
 		});
 	}
 
 	bool started = false;
 
-	async Task<(object? data, NetworkPacketInfo info)?> ReadPacket(FormatReader reader) {
+	// fallback implementation, csmixer/mixer.cs replaces this with a call to a runtime-generated id to direct call method
+
+	Task<object?> DeserializeAsync(FormatReader reader, uint id) {
+		var info = NetworkPacketRegistry.GetPacketInfo(id);
+		if (info == null || info.assocType == null) return Task.FromResult<object?>(null);
+		return FormatRegistry.DeserializeAsync(info.assocType, reader);
+	}
+
+	async Task<(object? data, uint packetId)> ReadPacket(FormatReader reader) {
 		uint id = await reader.ReadUIntAsync();
-		NetworkPacketInfo info = NetworkPacketRegistry.GetPacketInfo(id);
-		if (info == null) return null;
-		if (info.assocType != null) {
-			object value = await FormatRegistry.DeserializeAsync(info.assocType, reader);
-			return (value, info);
-		}
-		else {
-			return (null, info);
-		}
+		object? value = await DeserializeAsync(reader, id);
+		return (value, id);
+	}
+
+	bool packetIdIsValid(uint packetId) {
+		return NetworkPacketRegistry.GetPacketInfo(packetId) != null;
+	}
+
+	void RouteExplicit(uint packetId) {
+
+	}
+
+	void CheckRouting(object? data, uint packetId) {
+		if (data is IRoutedPacket routed)
+			routed.Route(false, 0);
+		else
+			RouteExplicit(packetId);
 	}
 
 	public async Task ProcessPackets(CancellationToken ct)
@@ -67,25 +92,19 @@ public partial class ClientTcp : IClient
 		if (started) return;
 		started = true;
 		while (true) {
-			var pack = await ReadPacket(reader);
-			if (pack == null) continue;
-			if (processors.ContainsKey(pack.Value.info.@enum)) {
-				ActionQueue.Enqueue(() =>
-				{
-					foreach (var processor in processors[pack.Value.info.@enum])
-						processor(pack.Value.data);
-				});
-			}
+			var (data, packetId) = await ReadPacket(connection.Reader);
+			if (!packetIdIsValid(packetId)) continue;
+			CheckRouting(data, packetId);
 		}
 	}
-
-	public void RegisterPacketProcessor<T>(object type, Action<T> processor) where T : IPacket
+	
+	public void Flush()
 	{
-		if (processors.TryGetValue(type, out var list)) {
-			processors.Add(type, [.. list, (o) => processor((T)o)]);
-		}
-		else {
-			processors.Add(type, [(o) => processor((T)o)]);
-		}
+		connection.Flush();
+	}
+
+	public void Connect(string host, int port)
+	{
+		connection.Connect(host, port);
 	}
 };

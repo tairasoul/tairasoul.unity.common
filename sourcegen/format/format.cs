@@ -14,7 +14,7 @@ namespace tairasoul.unity.common.sourcegen.format;
 
 using SerdeReturn = (IEnumerable<string> func, IEnumerable<string> @class, IEnumerable<string> attributes);
 
-static class FormatGen
+static class Generator
 {
 	static readonly SymbolDisplayFormat format = new(
 		globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Omitted,
@@ -92,7 +92,7 @@ static class FormatGen
 
 		string s = targetSymbol?.ToDisplayString(format);
 
-		if (s != "tairasoul.unity.common.format.FormatReader" && s != "tairasoul.unity.common.format.FormatWriter")
+		if (s != "tairasoul.unity.common.format.tairasoul.unity.common.format.FormatReader" && s != "tairasoul.unity.common.format.tairasoul.unity.common.format.FormatWriter")
 			return [];
 
 		if (methodSymbol.TypeArguments.Length <= 0)
@@ -269,7 +269,7 @@ static class FormatGen
 				}
 			}
 		}
-		return new FormatStruct(symbol.ToDisplayString(format), symbol.ContainingNamespace.ToDisplayString(format), fields.ToImmutableArray(), symbol.IsRecord, symbol.DeclaredAccessibility == Accessibility.Public, unmanaged, symbol.TypeKind == TypeKind.Class);
+		return new FormatStruct(symbol.ToDisplayString(format), symbol.Name, symbol.ContainingNamespace.ToDisplayString(format), fields.ToImmutableArray(), symbol.IsRecord, symbol.DeclaredAccessibility == Accessibility.Public, unmanaged, symbol.TypeKind == TypeKind.Class);
 	}
 
 	static FormatInterface? ProcessInterface(INamedTypeSymbol symbol, SemanticModel model, HashSet<string> encountered, List<FormatItem> extras) 
@@ -923,7 +923,7 @@ static class FormatGen
 					[]
 				);
 			case FormatQualifiedReference reference:
-				return ([$"%2 = {(async ? "await " : "")}tairasoul.unity.common.format.items.formatters_{reference.qualifiedName}Format.Deserialize{(async ? "Async" : "")}(%1)"], [], []);
+				return ([$"%2 = {(async ? "await " : "")}{reference.qualifiedName}__Format.Deserialize{(async ? "Async" : "")}(%1)"], [], []);
 			default:
 				return ([], [], []);
 		}
@@ -1237,7 +1237,7 @@ static class FormatGen
 			case FormatPrimitive primitive:
 				return ([GetPrimitiveSer(primitive.primitive)], [], []);
 			case FormatQualifiedReference reference:
-				return ([$"tairasoul.unity.common.format.items.formatters_{reference.qualifiedName}Format.Serialize(%1, %2)"], [], []);
+				return ([$"{reference.qualifiedName}__Format.Serialize(%1, %2)"], [], []);
 			default:
 				return ([], [], []);
 		}
@@ -1267,19 +1267,19 @@ static class FormatGen
 			(IEnumerable<string> ser, IEnumerable<string> ser_class, IEnumerable<string> ser_attr) = GetSer(scoped, @struct);
 			(IEnumerable<string> deser_sync, IEnumerable<string> deser_class_sync, _) = GetDes(scoped, @struct);
 			(IEnumerable<string> deser_async, IEnumerable<string> deser_class_async, _) = GetDes(scoped, @struct, true);
-			sb.AppendLine($"namespace tairasoul.unity.common.format.items.formatters_{add};");
+			sb.AppendLine($"namespace {@struct.@namespace};");
 			sb.AppendLine($"[GeneratedCode({GeneratedCodeData})]");
 			sb.AppendLine($"[FormatMethodsFor(typeof({@struct.qualifiedName}))]");
 			foreach (var line in ser_attr)
 				sb.AppendLine(line);
-			sb.AppendLine($"{(@struct.@public ? "public " : "")}static class {name}Format {{");
+			sb.AppendLine($"{(@struct.@public ? "public " : "")}static class {@struct.name}__Format {{");
 			string typeName = scoped.Generate(typeof(Type));
 			sb.AppendLine($"{GeneratorUtil.Tabs()}static Type {typeName} = typeof({@struct.qualifiedName});");
 			scoped.Add("StaticType", typeName);
 			{
 				string structName = scoped.Generate(typeof(int));
 				sb.AppendLine($"{GeneratorUtil.Tabs()}[MethodImpl(MethodImplOptions.AggressiveInlining)]");
-				sb.AppendLine($"{GeneratorUtil.Tabs()}public static void Serialize(FormatWriter writer, {@struct.qualifiedName} {structName}) {{");
+				sb.AppendLine($"{GeneratorUtil.Tabs()}public static void Serialize(tairasoul.unity.common.format.FormatWriter writer, {@struct.qualifiedName} {structName}) {{");
 				foreach (string s in ser) {
 					sb.AppendLine($"{GeneratorUtil.Tabs(2)}{s.Replace("%1", "writer").Replace("%2", structName)}");
 				}
@@ -1291,7 +1291,7 @@ static class FormatGen
 			{
 				string structName = scoped.Generate(typeof(int));
 				sb.AppendLine($"{GeneratorUtil.Tabs()}[MethodImpl(MethodImplOptions.AggressiveInlining)]");
-				sb.AppendLine($"{GeneratorUtil.Tabs()}public static {@struct.qualifiedName} Deserialize(FormatReader reader) {{");
+				sb.AppendLine($"{GeneratorUtil.Tabs()}public static {@struct.qualifiedName} Deserialize(tairasoul.unity.common.format.FormatReader reader) {{");
 				if (!@struct.record && !@struct.isClass) {
 					if (!@struct.isUnmanaged)
 						deser_sync = [$"tairasoul.unity.common.util.CustomUnsafe.SkipInit<{@struct.qualifiedName}>(out {@struct.qualifiedName} {structName});" , .. deser_sync];
@@ -1315,7 +1315,7 @@ static class FormatGen
 			{
 				string structName = scoped.Generate(typeof(int));
 				sb.AppendLine($"{GeneratorUtil.Tabs()}[MethodImpl(MethodImplOptions.AggressiveInlining)]");
-				sb.AppendLine($"{GeneratorUtil.Tabs()}public static async Task<{@struct.qualifiedName}> DeserializeAsync(FormatReader reader) {{");
+				sb.AppendLine($"{GeneratorUtil.Tabs()}public static async Task<{@struct.qualifiedName}> DeserializeAsync(tairasoul.unity.common.format.FormatReader reader) {{");
 				if (!@struct.record && !@struct.isClass) {
 					if (!@struct.isUnmanaged)
 						deser_async = [$"tairasoul.unity.common.util.CustomUnsafe.SkipInit<{@struct.qualifiedName}>(out {@struct.qualifiedName} {structName});" , .. deser_async];

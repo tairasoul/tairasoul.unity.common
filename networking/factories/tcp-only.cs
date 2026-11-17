@@ -1,26 +1,63 @@
+using System.Net;
 using tairasoul.unity.common.networking.clients;
+using tairasoul.unity.common.networking.layer;
+using tairasoul.unity.common.networking.protocols.tcp;
 using tairasoul.unity.common.networking.servers;
+using TcpConnection = tairasoul.unity.common.networking.protocols.tcp.TcpConnection;
 
 namespace tairasoul.unity.common.networking.factories;
 
-public class TcpOnlyFactory : ITransportFactory
+public class TcpOnlyFactory : IConnectionFactory
 {
-	public IClient CreateReliableClient(string host, int port)
+	class TcpOnlyCoordinator(IServerLayer layer) : IServerCoordinator
 	{
-		return new ClientTcp(host, port);
+		readonly IServerLayer layer = layer;
+
+		public ushort StartingID => layer.StartingID;
+
+		public PlayerTracker Tracker => layer.Tracker;
+
+		public void ClientConnected(IServer origin, ushort id, IConnection connection, IPEndPoint endPoint)
+		{
+			ConnectionPair pair = new(connection)
+			{
+				Unreliable = connection
+			};
+			Tracker.Track(id, pair);
+			layer.PlayerConnect(origin, id);
+		}
+
+		public IConnection ConnectionFromPair(IServer thisServer, ConnectionPair pair)
+		{
+			return layer.ConnectionFromPair(thisServer, pair);
+		}
+
+		public void HandleDisconnect(IServer origin, ushort id) {
+			layer.PlayerDisconnect(origin, id);
+		}
 	}
 
-	public IClient CreateUnreliableClient(IClient reliable, string host, int hostPort, int localPort)
+	public IServer ReliableServer()
+	{
+		return new ServerTcp();
+	}
+
+	public IServer UnreliableServer(IServer reliable)
 	{
 		return reliable;
 	}
 
-	public IServer CreateReliableServer(int port)
+	public IServerCoordinator CreateCoordinator(IServerLayer layer)
 	{
-		return new ServerTcp(port);
+		return new TcpOnlyCoordinator(layer);
 	}
 
-	public IServer CreateUnreliableServer(IServer reliable, int port)
+	public IClient ReliableClient()
+	{
+		return new ClientTcp();
+	}
+
+	public IClient UnreliableClient(IClient reliable)
 	{
 		return reliable;
 	}

@@ -9,12 +9,12 @@ ReaderParameters parameters = new(ReadingMode.Immediate)
 	ReadWrite = true,
 };
 
-AssemblyDefinition assembly = AssemblyDefinition.ReadAssembly(path, parameters);
-ModuleDefinition module = assembly.MainModule;
+using (AssemblyDefinition assembly = AssemblyDefinition.ReadAssembly(path, parameters)) {
+	ModuleDefinition module = assembly.MainModule;
 
-TypeDefinition CustomUnsafe = module.GetType("tairasoul.unity.common.util.CustomUnsafe").Resolve();
+	TypeDefinition CustomUnsafe = module.GetType("tairasoul.unity.common.util.CustomUnsafe").Resolve();
 
-TypeWeaves.UnsafeSkipInit(CustomUnsafe);
+	TypeWeaves.UnsafeSkipInit(CustomUnsafe);
 
-assembly.Write(path);
-assembly.Dispose();
+	assembly.Write(path);
+}

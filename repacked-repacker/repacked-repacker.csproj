@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <LangVersion>13</LangVersion>
+    <ForceTrigger>true</ForceTrigger>
+    <RepackConfig>
+      <Targets>Mono.Cecil;Mono.Cecil.Mdb;Mono.Cecil.Pdb;Mono.Cecil.Rocks</Targets>
+      <RepackPdb>Portable</RepackPdb>
+    </RepackConfig>
+  </PropertyGroup>
+  <Import Project="../shared_projects/csproj_util.csproj" Label="Shared" />
+  <ItemGroup>
+    <RunAfterBuild Include="../weavers/RepackingWeaver/RepackingWeaver.csproj" />
+		<Compile Include="../repacker/copying.cs" />
+		<Compile Include="../repacker/extensions.cs" />
+		<Compile Include="../repacker/mapper.cs" />
+		<Compile Include="../repacker/queue.cs" />
+		<Compile Include="../repacker/repacker.cs" />
+		<Compile Include="../repacker/system/isexternalinit.cs" />
+    <PackageReference Include="Mono.Cecil" Version="0.11.6" />
+  </ItemGroup>
+</Project>

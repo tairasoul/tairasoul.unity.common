@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using tairasoul.unity.common.hashing;
 
 namespace tairasoul.unity.common.events;
 
@@ -54,7 +53,7 @@ public static class EventBus
 		where T : EventID
 		where H : EventData
 	{
-		string listenerId = Murmur3.Hash128String($"{DateTime.Now}_autoListenerWaitFor");
+		string listenerId = $"{DateTime.Now}_autoListenerWaitFor";
 		TaskCompletionSource<H> tcs = new();
 		Listen<T, H>(eventId, listenerId, ed =>
 		{

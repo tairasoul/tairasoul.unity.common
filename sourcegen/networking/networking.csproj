@@ -18,5 +18,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="../../hashing/murmur3.cs" />
+    <Compile Include="../format/util.cs" />
+    <Compile Include="../format/format.cs" />
+    <Compile Include="../format/data.cs" />
   </ItemGroup>
 </Project>

@@ -9,6 +9,9 @@ using tairasoul.unity.common.format.attributes;
 
 namespace tairasoul.unity.common.format;
 
+// todo: build off csmixer and only use this as fallback
+#if FORMAT_INCLUDE_REGISTRY
+
 record RegisteredFormatItem(
 	Action<object, FormatWriter> ser,
 	Func<FormatReader, object> des,
@@ -26,7 +29,7 @@ public static class FormatRegistry
 		foreach (var assembly in assemblies) {
 			Type[] types = assembly.GetTypes();
 			foreach (var type in types) {
-				if (type.Namespace != null && type.Namespace.StartsWith("tairasoul.unity.common.format.items.formatters_")) {
+				if (type.Namespace != null && type.Namespace.StartsWith("formatters_")) {
 					var @for = type.GetCustomAttribute<FormatMethodsForAttribute>();
 					if (@for == null) continue;
 					if (!encounteredTypes.Add(@for.target.FullName)) continue;
@@ -123,3 +126,5 @@ public static class FormatRegistry
 		return await info!.desAsync(reader);
 	}
 }
+
+#endif

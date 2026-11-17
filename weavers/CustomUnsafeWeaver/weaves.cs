@@ -8,6 +8,6 @@ static class TypeWeaves {
 		ILProcessor processor = body.GetILProcessor();
 		processor.Body.Instructions.Clear();
 		processor.Emit(OpCodes.Ret);
-		body.MaxStackSize = 8;
+		body.MaxStackSize = 0;
 	}
 }

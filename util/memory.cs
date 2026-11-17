@@ -37,6 +37,8 @@ unsafe static class MemOps {
 	public static void Copy(void* src, void* dst, int bytes) {
 #if UNITY_ENVIRONMENT
 		UnsafeUtility.MemCpy(dst, src, bytes);
+#elif USE_BUFFER
+		Buffer.MemoryCopy(src, dst, (long)bytes, (long)bytes);
 #else
 		Unsafe.CopyBlock(dst, src, (uint)bytes);
 #endif
